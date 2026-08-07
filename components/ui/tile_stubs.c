@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 static lv_obj_t *s_notification_list;
+static lv_obj_t *s_notification_title;
 
 static void render_notifications(void);
 
@@ -32,6 +33,8 @@ static void render_notifications(void)
     aura_notification_t *items = calloc(AURA_NOTIFICATION_MAX, sizeof(*items));
     if (!items) return;
     size_t count = aura_notifications_snapshot(items, AURA_NOTIFICATION_MAX);
+    if (s_notification_title)
+        lv_label_set_text_fmt(s_notification_title, "Notifications  %u", (unsigned)count);
     lv_obj_clean(s_notification_list);
     if (count == 0) {
         lv_obj_t *label = lv_label_create(s_notification_list);
@@ -90,9 +93,9 @@ void panel_notif_build(lv_obj_t *panel)
     lv_obj_set_style_bg_color(panel, AURA_COL_BG, 0);
     aura_ui_apply_safe_area(panel);
     lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
-    lv_obj_t *title = lv_label_create(panel);
-    lv_label_set_text(title, "Notifications");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    s_notification_title = lv_label_create(panel);
+    lv_label_set_text(s_notification_title, "Notifications");
+    lv_obj_set_style_text_font(s_notification_title, &lv_font_montserrat_28, 0);
     s_notification_list = lv_obj_create(panel);
     lv_obj_set_width(s_notification_list, lv_pct(100));
     lv_obj_set_flex_grow(s_notification_list, 1);
@@ -104,6 +107,38 @@ void panel_notif_build(lv_obj_t *panel)
     lv_obj_set_scrollbar_mode(s_notification_list, LV_SCROLLBAR_MODE_OFF);
     render_notifications();
     (void)aura_subscribe(AURA_EVT_NOTIFICATIONS_CHANGED, notifications_changed, NULL);
+}
+
+void tile_conversation_build(lv_obj_t *tile)
+{
+    lv_obj_set_style_bg_color(tile, AURA_COL_BG, 0);
+    aura_ui_apply_safe_area(tile);
+    lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = lv_label_create(tile);
+    lv_label_set_text(title, "Talk");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    lv_obj_t *orb = lv_obj_create(tile);
+    lv_obj_set_size(orb, 116, 116);
+    lv_obj_set_style_radius(orb, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(orb, AURA_COL_ACCENT, 0);
+    lv_obj_set_style_border_width(orb, 0, 0);
+    lv_obj_clear_flag(orb, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_align(orb, LV_ALIGN_CENTER, 0, -35);
+    lv_obj_t *icon = lv_label_create(orb);
+    lv_label_set_text(icon, LV_SYMBOL_AUDIO);
+    lv_obj_set_style_text_color(icon, lv_color_black(), 0);
+    lv_obj_set_style_text_font(icon, &lv_font_montserrat_48, 0);
+    lv_obj_center(icon);
+
+    lv_obj_t *status = lv_label_create(tile);
+    lv_label_set_text(status, "Gemini Live will arrive in R4\nafter power and audio foundations pass.");
+    lv_obj_set_width(status, 340);
+    lv_obj_set_style_text_align(status, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(status, AURA_COL_MUTED, 0);
+    lv_obj_align(status, LV_ALIGN_CENTER, 0, 70);
 }
 
 /* ---------------- Quick settings (functional) ---------------- */

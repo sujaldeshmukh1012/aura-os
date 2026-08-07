@@ -43,6 +43,11 @@ static const char *TAG = "aura_hw";
 #define CHIME_VOLUME              55
 #define CHIME_CHUNK_SAMPLES       256
 
+typedef enum {
+    AUDIO_CUE_ALARM = 1,
+    AUDIO_CUE_NOTIFICATION,
+} audio_cue_t;
+
 static i2c_master_dev_handle_t s_pmu;
 static QueueHandle_t s_chime_queue;
 static SemaphoreHandle_t s_audio_lock;
@@ -253,7 +258,7 @@ static void chime_task(void *arg)
 {
     (void)arg;
     esp_codec_dev_handle_t codec = NULL;
-    uint8_t command;
+    audio_cue_t command;
     for (;;) {
         if (xQueueReceive(s_chime_queue, &command, portMAX_DELAY) != pdTRUE) continue;
         if (codec == NULL) codec = bsp_audio_codec_speaker_init();
@@ -275,9 +280,13 @@ static void chime_task(void *arg)
             aura_hw_audio_release();
             continue;
         }
-        (void)codec_write_tone(codec, 880, 180);
-        vTaskDelay(pdMS_TO_TICKS(70));
-        (void)codec_write_tone(codec, 1175, 260);
+        if (command == AUDIO_CUE_NOTIFICATION) {
+            (void)codec_write_tone(codec, 1047, 95);
+        } else {
+            (void)codec_write_tone(codec, 880, 180);
+            vTaskDelay(pdMS_TO_TICKS(70));
+            (void)codec_write_tone(codec, 1175, 260);
+        }
         (void)esp_codec_dev_close(codec);
         aura_hw_audio_release();
     }
@@ -312,7 +321,7 @@ esp_err_t aura_hw_init(void)
     ESP_RETURN_ON_ERROR(reg_write(AXP2101_IRQ_ENABLE2, irq_enable |
                         AXP2101_IRQ_PKEY_SHORT | AXP2101_IRQ_PKEY_LONG), TAG, "enable PWR events");
 
-    s_chime_queue = xQueueCreate(2, sizeof(uint8_t));
+    s_chime_queue = xQueueCreate(2, sizeof(audio_cue_t));
     s_audio_lock = xSemaphoreCreateMutex();
     if (s_chime_queue == NULL || s_audio_lock == NULL) return ESP_ERR_NO_MEM;
     if (xTaskCreate(chime_task, "aura_chime", 4096, NULL, 4, NULL) != pdPASS ||
@@ -342,6 +351,13 @@ uint32_t aura_hw_steps(void) { return s_steps; }
 esp_err_t aura_hw_play_chime(void)
 {
     if (s_chime_queue == NULL) return ESP_ERR_INVALID_STATE;
-    const uint8_t command = 1;
+    const audio_cue_t command = AUDIO_CUE_ALARM;
+    return xQueueSend(s_chime_queue, &command, 0) == pdTRUE ? ESP_OK : ESP_ERR_TIMEOUT;
+}
+
+esp_err_t aura_hw_play_notification(void)
+{
+    if (s_chime_queue == NULL) return ESP_ERR_INVALID_STATE;
+    const audio_cue_t command = AUDIO_CUE_NOTIFICATION;
     return xQueueSend(s_chime_queue, &command, 0) == pdTRUE ? ESP_OK : ESP_ERR_TIMEOUT;
 }
