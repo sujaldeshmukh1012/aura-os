@@ -16,6 +16,7 @@ typedef struct {
 
 esp_err_t aura_notifications_init(void);
 size_t aura_notifications_snapshot(aura_notification_t *out, size_t capacity);
+size_t aura_notifications_count(void);
 esp_err_t aura_notifications_dismiss(uint32_t uid);
 
 /* Parser hooks used by the ANCS transport. */

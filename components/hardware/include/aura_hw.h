@@ -14,6 +14,9 @@ esp_err_t aura_hw_init(void);
 /** Queue the built-in alarm chime. Returns immediately. */
 esp_err_t aura_hw_play_chime(void);
 
+/** Queue the short, low-volume notification cue. Returns immediately. */
+esp_err_t aura_hw_play_notification(void);
+
 /** Current software-pedometer count for the local calendar day. */
 uint32_t aura_hw_steps(void);
 

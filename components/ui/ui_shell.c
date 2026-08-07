@@ -20,6 +20,7 @@ typedef enum {
     UI_UNLOCK,
     UI_LAUNCHER,
     UI_APP,
+    UI_NOTIFICATIONS,
 } ui_state_t;
 
 #define PIN_MAGIC 0x41555049u
@@ -36,6 +37,8 @@ static lv_obj_t *s_lock_screen;
 static lv_obj_t *s_unlock_screen;
 static lv_obj_t *s_launcher;
 static lv_obj_t *s_apps[6];
+static lv_obj_t *s_notification_panel;
+static lv_obj_t *s_mode_badge;
 static lv_obj_t *s_current_app;
 static lv_obj_t *s_pin_hint;
 static lv_obj_t *s_pin_value;
@@ -49,6 +52,7 @@ static ui_state_t s_state = UI_LOCKED;
 static bool s_edge_tracking;
 static bool s_edge_from_left;
 static lv_point_t s_edge_start;
+static bool s_vertical_tracking;
 
 /* ---------------- shared widgets ---------------- */
 
@@ -117,13 +121,14 @@ static void show_only(lv_obj_t *screen)
 {
     lv_obj_t *screens[] = {s_lock_screen, s_unlock_screen, s_launcher,
                            s_apps[0], s_apps[1], s_apps[2], s_apps[3],
-                           s_apps[4], s_apps[5]};
+                           s_apps[4], s_apps[5], s_notification_panel};
     for (size_t i = 0; i < sizeof(screens) / sizeof(screens[0]); ++i) {
         if (!screens[i]) continue;
         if (screens[i] == screen) lv_obj_clear_flag(screens[i], LV_OBJ_FLAG_HIDDEN);
         else lv_obj_add_flag(screens[i], LV_OBJ_FLAG_HIDDEN);
     }
     lv_obj_move_foreground(screen);
+    if (s_mode_badge) lv_obj_move_foreground(s_mode_badge);
     lv_obj_invalidate(s_root);
 }
 
@@ -146,9 +151,18 @@ static void show_launcher(void)
     show_only(s_launcher);
 }
 
+static void show_notifications(void)
+{
+    s_state = UI_NOTIFICATIONS;
+    s_current_app = NULL;
+    power_mgr_set_screen_saver_active(false);
+    show_only(s_notification_panel);
+}
+
 static void navigate_back(void)
 {
     if (s_state == UI_APP) show_launcher();
+    else if (s_state == UI_NOTIFICATIONS) show_lock();
     else if (s_state != UI_LOCKED) show_lock();
 }
 
@@ -339,14 +353,16 @@ static void build_unlock_screen(void)
     lv_obj_t *keypad = lv_buttonmatrix_create(s_unlock_screen);
     lv_buttonmatrix_set_map(keypad, keys);
     lv_obj_set_size(keypad, 362, 280);
-    lv_obj_align(keypad, LV_ALIGN_BOTTOM_MID, 0, -AURA_SCREEN_SAFE_BOTTOM);
+    /* Leave a dedicated strip for the always-visible mode badge. */
+    lv_obj_align(keypad, LV_ALIGN_BOTTOM_MID, 0, -65);
     lv_obj_set_style_bg_color(keypad, AURA_COL_BG, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(keypad, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(keypad, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(keypad, 7, LV_PART_MAIN);
     lv_obj_set_style_pad_row(keypad, 7, LV_PART_MAIN);
     lv_obj_set_style_pad_column(keypad, 7, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(keypad, lv_color_hex(0x17171A), LV_PART_ITEMS);
+    lv_obj_set_style_bg_color(keypad, lv_color_white(), LV_PART_ITEMS);
+    lv_obj_set_style_text_color(keypad, lv_color_black(), LV_PART_ITEMS);
     lv_obj_set_style_radius(keypad, 18, LV_PART_ITEMS);
     lv_obj_set_style_text_font(keypad, &lv_font_montserrat_28, LV_PART_ITEMS);
     lv_obj_add_event_cb(keypad, pin_key_cb, LV_EVENT_VALUE_CHANGED, NULL);
@@ -370,6 +386,8 @@ static void app_open_cb(lv_event_t *event)
         aura_sync_request_refresh();
 }
 
+/* Static gestures: inward edge swipe is Back; downward lock-face swipe opens
+ * the notification shade. No object is translated while tracking either. */
 /* System back gesture: only touches beginning in the outer 30 px qualify.
  * This preserves vertical scrolling and in-app horizontal controls while
  * making a deliberate inward swipe from either curved edge act as Back. */
@@ -381,11 +399,23 @@ static void edge_back_cb(lv_event_t *event)
     lv_indev_get_point(indev, &point);
 
     if (code == LV_EVENT_PRESSED) {
+        s_vertical_tracking = s_state == UI_LOCKED;
         s_edge_tracking = s_state != UI_LOCKED &&
                           (point.x <= 30 || point.x >= AURA_LCD_H_RES - 31);
         s_edge_from_left = point.x <= 30;
         s_edge_start = point;
         return;
+    }
+    if (s_vertical_tracking && code == LV_EVENT_PRESSING) {
+        int dx = point.x - s_edge_start.x;
+        int dy = point.y - s_edge_start.y;
+        if (dy >= 80 && LV_ABS(dx) <= 90) {
+            s_vertical_tracking = false;
+            show_notifications();
+            lv_indev_stop_processing(indev);
+            lv_indev_wait_release(indev);
+            return;
+        }
     }
     if (!s_edge_tracking) return;
 
@@ -403,6 +433,7 @@ static void edge_back_cb(lv_event_t *event)
         }
     } else if (code == LV_EVENT_RELEASED) {
         s_edge_tracking = false;
+        s_vertical_tracking = false;
     }
 }
 
@@ -458,7 +489,7 @@ static void build_launcher(void)
     launcher_button(s_launcher, 1, 217, 100, LV_SYMBOL_BELL, "Timer");
     launcher_button(s_launcher, 2, 24, 222, LV_SYMBOL_AUDIO, "Capture");
     launcher_button(s_launcher, 3, 217, 222, LV_SYMBOL_FILE, "Calendar");
-    launcher_button(s_launcher, 4, 24, 344, LV_SYMBOL_BELL, "Notifications");
+    launcher_button(s_launcher, 4, 24, 344, LV_SYMBOL_AUDIO, "Talk");
     launcher_button(s_launcher, 5, 217, 344, LV_SYMBOL_SETTINGS, "Settings");
 }
 
@@ -472,8 +503,44 @@ static void build_app_screens(void)
     tile_clock_build(s_apps[1]);
     tile_memory_build(s_apps[2]);
     tile_calendar_build(s_apps[3]);
-    panel_notif_build(s_apps[4]);
+    tile_conversation_build(s_apps[4]);
     tile_settings_build(s_apps[5]);
+
+    s_notification_panel = lv_obj_create(s_root);
+    style_screen(s_notification_panel);
+    panel_notif_build(s_notification_panel);
+}
+
+static const char *mode_badge_text(void)
+{
+    switch (aura_mode_get()) {
+    case AURA_MODE_CAPTURE: return LV_SYMBOL_AUDIO "  CAPTURE";
+    case AURA_MODE_STEALTH: return LV_SYMBOL_EYE_OPEN "  STEALTH";
+    case AURA_MODE_CONVERSATION: return LV_SYMBOL_WIFI "  LIVE";
+    default: return LV_SYMBOL_MUTE "  SILENT";
+    }
+}
+
+static void mode_badge_changed(void *h, esp_event_base_t b, int32_t id, void *d)
+{
+    (void)h; (void)b; (void)id; (void)d;
+    bsp_display_lock(0);
+    lv_label_set_text(s_mode_badge, mode_badge_text());
+    bsp_display_unlock();
+}
+
+static void build_mode_badge(void)
+{
+    s_mode_badge = lv_label_create(s_root);
+    lv_label_set_text(s_mode_badge, mode_badge_text());
+    lv_obj_set_style_text_font(s_mode_badge, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(s_mode_badge, AURA_COL_MUTED, 0);
+    lv_obj_set_style_bg_color(s_mode_badge, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(s_mode_badge, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_hor(s_mode_badge, 10, 0);
+    lv_obj_set_style_pad_ver(s_mode_badge, 4, 0);
+    lv_obj_set_style_radius(s_mode_badge, 12, 0);
+    lv_obj_align(s_mode_badge, LV_ALIGN_BOTTOM_MID, 0, -8);
 }
 
 /* ---------------- power/button events ---------------- */
@@ -521,6 +588,7 @@ esp_err_t aura_ui_start(void)
     build_unlock_screen();
     build_launcher();
     build_app_screens();
+    build_mode_badge();
     lv_indev_t *touch = bsp_display_get_input_dev();
     if (touch) {
         lv_indev_add_event_cb(touch, edge_back_cb, LV_EVENT_PRESSED, NULL);
@@ -535,6 +603,8 @@ esp_err_t aura_ui_start(void)
     err = aura_subscribe(AURA_EVT_BTN_HOME, on_btn_home, NULL);
     if (err != ESP_OK) return err;
     err = aura_subscribe(AURA_EVT_WAKE, on_wake, NULL);
+    if (err != ESP_OK) return err;
+    err = aura_subscribe(AURA_EVT_MODE_CHANGED, mode_badge_changed, NULL);
     if (err != ESP_OK) return err;
 
     ESP_LOGI(TAG, "static lock/launcher shell up (%s)",

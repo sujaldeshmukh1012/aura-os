@@ -55,6 +55,7 @@ void tile_clock_build(lv_obj_t *tile);
 void tile_calendar_build(lv_obj_t *tile);   /* Phase 3: stub list for now */
 void tile_mission_build(lv_obj_t *tile);    /* Phase 3: stub list for now */
 void tile_memory_build(lv_obj_t *tile);     /* Phase 4: stub for now */
+void tile_conversation_build(lv_obj_t *tile);
 void tile_settings_build(lv_obj_t *tile);
 void panel_quick_build(lv_obj_t *panel);
 void panel_notif_build(lv_obj_t *panel);    /* Phase 3: ANCS feeds this */

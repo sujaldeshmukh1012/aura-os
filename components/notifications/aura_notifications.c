@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include "aura_core.h"
+#include "aura_hw.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -36,14 +37,24 @@ size_t aura_notifications_snapshot(aura_notification_t *out, size_t capacity)
     return count;
 }
 
+size_t aura_notifications_count(void)
+{
+    if (!s_lock) return 0;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    size_t count = s_count;
+    xSemaphoreGive(s_lock);
+    return count;
+}
+
 void aura_notifications_received(uint32_t uid, const char *app,
                                  const char *title, const char *body)
 {
     if (!s_lock) return;
     xSemaphoreTake(s_lock, portMAX_DELAY);
     size_t index = s_count;
+    bool is_new = true;
     for (size_t i = 0; i < s_count; ++i)
-        if (s_items[i].uid == uid) { index = i; break; }
+        if (s_items[i].uid == uid) { index = i; is_new = false; break; }
     if (index == s_count) {
         if (s_count < AURA_NOTIFICATION_MAX) ++s_count;
         else index = AURA_NOTIFICATION_MAX - 1;
@@ -54,6 +65,10 @@ void aura_notifications_received(uint32_t uid, const char *app,
     strlcpy(s_items[0].title, title && title[0] ? title : "Notification", sizeof(s_items[0].title));
     strlcpy(s_items[0].body, body ? body : "", sizeof(s_items[0].body));
     xSemaphoreGive(s_lock);
+    int32_t sound_enabled = 1;
+    (void)aura_settings_get_i32("notif_sound", &sound_enabled, 1);
+    if (is_new && sound_enabled && aura_mode_get() != AURA_MODE_CONVERSATION)
+        (void)aura_hw_play_notification();
     changed();
 }
 

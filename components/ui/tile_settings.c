@@ -13,6 +13,7 @@ static lv_obj_t *s_sleep_button_label;
 static lv_obj_t *s_wifi_button_label;
 static lv_obj_t *s_network_meta;
 static lv_obj_t *s_lock_reset_label;
+static lv_obj_t *s_notification_sound_label;
 
 static void refresh_network_metadata(void)
 {
@@ -80,6 +81,22 @@ static void lock_reset_cb(lv_event_t *e)
     } else {
         lv_label_set_text(s_lock_reset_label, "Could not clear passcode");
     }
+}
+
+static bool notification_sound_enabled(void)
+{
+    int32_t enabled = 1;
+    (void)aura_settings_get_i32("notif_sound", &enabled, 1);
+    return enabled != 0;
+}
+
+static void notification_sound_cb(lv_event_t *e)
+{
+    bool enabled = !notification_sound_enabled();
+    (void)aura_settings_set_i32("notif_sound", enabled ? 1 : 0);
+    lv_label_set_text(s_notification_sound_label,
+                      enabled ? "Notification sound: On"
+                              : "Notification sound: Off");
 }
 
 static void settings_event(void *h, esp_event_base_t b, int32_t id, void *d)
@@ -157,6 +174,13 @@ void tile_settings_build(lv_obj_t *tile)
     button = aura_ui_big_button(tile, aura_wifi_status_text(), lv_color_hex(0x1C1C1F));
     s_wifi_button_label = lv_obj_get_child(button, 0);
     lv_obj_add_event_cb(button, wifi_setup_cb, LV_EVENT_CLICKED, NULL);
+
+    button = aura_ui_big_button(tile,
+        notification_sound_enabled() ? "Notification sound: On"
+                                     : "Notification sound: Off",
+        lv_color_hex(0x1C1C1F));
+    s_notification_sound_label = lv_obj_get_child(button, 0);
+    lv_obj_add_event_cb(button, notification_sound_cb, LV_EVENT_CLICKED, NULL);
 
     button = aura_ui_big_button(tile, "Reset passcode", lv_color_hex(0x4A1D22));
     s_lock_reset_label = lv_obj_get_child(button, 0);
