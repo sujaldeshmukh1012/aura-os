@@ -1,0 +1,13 @@
+## AURA OS main component dependencies
+dependencies:
+  idf: ">=5.3"
+  # Official Waveshare BSP for this exact board: CO5300 QSPI display,
+  # FT3168 touch, LVGL port, AXP2101, codec wiring.
+  waveshare/esp32_s3_touch_amoled_2_06:
+    version: "*"
+  lvgl/lvgl:
+    version: "9.5.0"
+    public: true
+  espressif/esp_codec_dev:
+    version: "~1.5"
+    public: true

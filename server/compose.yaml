@@ -1,0 +1,39 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      AURA_DB_PATH: /data/aura.db
+      AURA_DATA_DIR: /data
+      MS_GRAPH_TOKEN_CACHE: /data/ms-token-cache.json
+    volumes:
+      - aura_data:/data
+    networks: [aura]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/oracle/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [aura]
+
+networks:
+  aura:
+volumes:
+  aura_data:
+  caddy_data:
+  caddy_config:

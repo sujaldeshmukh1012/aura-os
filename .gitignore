@@ -1,0 +1,27 @@
+# ESP-IDF generated output
+build/
+managed_components/
+sdkconfig.old
+
+# Local/editor state
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Credentials and local overrides
+.env
+.env.*
+!.env.example
+secrets/
+*.key
+*.key.pub
+*.pem
+sdkconfig.local
+components/connectivity/include/aura_secrets.h
+server/.venv/
+server/.pytest_cache/
+server/*.egg-info/
+server/data/
+__pycache__/
+*.py[cod]

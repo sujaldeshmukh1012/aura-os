@@ -1,0 +1,10 @@
+# AURA OS partition map — 32MB flash
+# Dual OTA slots from day one so Phase 6 (server-pushed updates) needs no repartition.
+# Name,     Type, SubType,  Offset,   Size,     Flags
+nvs,        data, nvs,      0x9000,   0x6000,
+otadata,    data, ota,      0xf000,   0x2000,
+phy_init,   data, phy,      0x11000,  0x1000,
+ota_0,      app,  ota_0,    0x20000,  6M,
+ota_1,      app,  ota_1,    ,         6M,
+storage,    data, spiffs,   ,         16M,
+coredump,   data, coredump, ,         256K,

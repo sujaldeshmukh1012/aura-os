@@ -1,0 +1,77 @@
+# ---- Target / flash / PSRAM (ESP32-S3R8 + 32MB flash) ----
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+# Preserve a larger internal pool for SPI display, SDMMC and audio DMA. Normal
+# allocations spill into the watch's 8 MB PSRAM instead of fragmenting it.
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536
+
+# A FAT32 microSD uses 512-byte logical sectors. A 4KB FatFS cache crosses the
+# PSRAM allocation threshold and forces SDMMC to allocate scarce DMA bounce
+# buffers; a 512-byte cache stays internal and can be transferred directly.
+CONFIG_FATFS_SECTOR_512=y
+CONFIG_FATFS_SECTOR_4096=n
+
+# Wi-Fi, BLE, display DMA and audio leave too little contiguous internal DRAM
+# for a TLS client context. Keep cryptographic session allocations in PSRAM.
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+# AES-DMA needs temporary internal buffers when TLS records live in PSRAM.
+# Internal RAM is intentionally tight on this watch, so use software AES for
+# reliable streaming uploads. At 240 MHz it has negligible practical penalty.
+CONFIG_MBEDTLS_HARDWARE_AES=n
+
+# Keep enough contiguous DMA RAM for AMOLED refresh while Wi-Fi is active.
+# The BSP's default 100-row LVGL buffer makes SPI allocate an ~82KB DMA copy
+# for every flush; a 20-row buffer caps that copy at ~16KB.
+CONFIG_BSP_DISPLAY_LVGL_BUF_HEIGHT=16
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=5120
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=8
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=8
+CONFIG_ESP_WIFI_CACHE_TX_BUFFER_NUM=8
+CONFIG_ESP_WIFI_RX_BA_WIN=8
+
+# ---- Partitions ----
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# ---- CPU / FreeRTOS ----
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_FREERTOS_HZ=1000
+
+# ---- Power management (light sleep + DFS) ----
+CONFIG_PM_ENABLE=y
+CONFIG_PM_DFS_INIT_AUTO=y
+CONFIG_FREERTOS_USE_TICKLESS_IDLE=y
+
+# ---- LVGL ----
+CONFIG_LV_COLOR_DEPTH_16=y
+CONFIG_LV_USE_PERF_MONITOR=n
+
+# ---- Console over USB (board flashes over native USB) ----
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# ---- NVS for settings ----
+CONFIG_NVS_ENCRYPTION=n
+
+# ---- BLE / Apple Notification Center Service ----
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_BLUEDROID_ENABLED=n
+CONFIG_BT_NIMBLE_NVS_PERSIST=y
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
+CONFIG_BT_NIMBLE_MAX_BONDS=1
+# Keep the NimBLE host's ordinary pools out of scarce internal DMA memory.
+CONFIG_BT_NIMBLE_MEM_ALLOC_MODE_INTERNAL=n
+CONFIG_BT_NIMBLE_MEM_ALLOC_MODE_EXTERNAL=y
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
+CONFIG_BT_CTRL_MODEM_SLEEP=y
+CONFIG_BT_CTRL_MODEM_SLEEP_MODE_1=y
+CONFIG_BT_CTRL_LPCLK_SEL_MAIN_XTAL=y
+CONFIG_BT_CTRL_MAIN_XTAL_PU_DURING_LIGHT_SLEEP=y
