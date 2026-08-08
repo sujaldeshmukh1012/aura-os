@@ -24,19 +24,19 @@ static void render_mission(void);
 static const char *audio_mode_text(void)
 {
     switch (aura_mode_get()) {
-    case AURA_MODE_STEALTH: return "Stealth · rolling 5 min";
-    case AURA_MODE_CAPTURE: return "Capture · preserving audio";
-    case AURA_MODE_CONVERSATION: return "Conversation · live";
-    default: return "Silent · microphone off";
+    case AURA_MODE_STEALTH: return "Stealth - rolling 5 min";
+    case AURA_MODE_CAPTURE: return "Capture - preserving audio";
+    case AURA_MODE_CONVERSATION: return "Conversation - live";
+    default: return "Silent - microphone off";
     }
 }
 
 static const char *audio_mode_button(void)
 {
     switch (aura_mode_get()) {
-    case AURA_MODE_STEALTH: return LV_SYMBOL_EYE_OPEN "  Mode: Stealth";
-    case AURA_MODE_CAPTURE: return LV_SYMBOL_AUDIO "  Mode: Capture";
-    default: return LV_SYMBOL_MUTE "  Mode: Silent";
+    case AURA_MODE_STEALTH: return "Mode: Stealth";
+    case AURA_MODE_CAPTURE: return "Mode: Capture";
+    default: return "Mode: Silent";
     }
 }
 
@@ -102,12 +102,12 @@ static void render_calendar(void)
         localtime_r(&event->start_epoch, &local);
         char subtitle[96];
         if (event->all_day)
-            strftime(subtitle, sizeof(subtitle), "%a · all day", &local);
+            strftime(subtitle, sizeof(subtitle), "%a - all day", &local);
         else
-            strftime(subtitle, sizeof(subtitle), "%a %b %e · %I:%M %p", &local);
+            strftime(subtitle, sizeof(subtitle), "%a %b %e - %I:%M %p", &local);
         if (event->calendar[0]) {
             size_t used = strlen(subtitle);
-            snprintf(subtitle + used, sizeof(subtitle) - used, " · %s", event->calendar);
+            snprintf(subtitle + used, sizeof(subtitle) - used, " - %s", event->calendar);
         }
         aura_ui_list_row(s_calendar_list, event->title, subtitle);
     }
@@ -152,7 +152,7 @@ static void render_mission(void)
     }
     if (snapshot->task_count == 0) {
         lv_obj_t *label = lv_label_create(s_mission_list);
-        lv_label_set_text(label, LV_SYMBOL_OK "  You are caught up");
+        lv_label_set_text(label, "You are caught up");
         lv_obj_set_style_text_color(label, AURA_COL_OK, 0);
         free(snapshot);
         return;
@@ -161,12 +161,12 @@ static void render_mission(void)
         aura_sync_task_t *task = &snapshot->tasks[i];
         char subtitle[96];
         if (task->due_at[0] && strlen(task->due_at) >= 16)
-            snprintf(subtitle, sizeof(subtitle), "%s · due %.10s %.5s%s",
+            snprintf(subtitle, sizeof(subtitle), "%s - due %.10s %.5s%s",
                      task->project, task->due_at, task->due_at + 11,
-                     task->priority >= 2 ? " · high" : "");
+                     task->priority >= 2 ? " - high" : "");
         else
             snprintf(subtitle, sizeof(subtitle), "%s%s", task->project,
-                     task->priority >= 2 ? " · high priority" : "");
+                     task->priority >= 2 ? " - high priority" : "");
         lv_obj_t *row = aura_ui_list_row(s_mission_list, task->title, subtitle);
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(row, task_expand_cb, LV_EVENT_CLICKED,
@@ -178,7 +178,7 @@ static void render_mission(void)
             lv_obj_set_style_bg_color(done, lv_color_hex(0x164B2C), 0);
             lv_obj_align(done, LV_ALIGN_BOTTOM_LEFT, 0, 0);
             lv_obj_t *label = lv_label_create(done);
-            lv_label_set_text(label, LV_SYMBOL_OK "  Done");
+            lv_label_set_text(label, "Done");
             lv_obj_center(label);
             lv_obj_add_event_cb(done, task_complete_cb, LV_EVENT_CLICKED,
                                 (void *)(intptr_t)task->id);
@@ -188,7 +188,7 @@ static void render_mission(void)
             lv_obj_set_style_bg_color(remove, lv_color_hex(0x4A1D22), 0);
             lv_obj_align(remove, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
             label = lv_label_create(remove);
-            lv_label_set_text(label, LV_SYMBOL_TRASH "  Delete");
+            lv_label_set_text(label, "Delete");
             lv_obj_center(label);
             lv_obj_add_event_cb(remove, task_delete_cb, LV_EVENT_CLICKED,
                                 (void *)(intptr_t)task->id);
@@ -215,7 +215,7 @@ static void render_memory(void)
     aura_capture_status_t capture;
     aura_hw_capture_status(&capture);
     char status[96];
-    snprintf(status, sizeof(status), "%s · %u queued · %s",
+    snprintf(status, sizeof(status), "%s | %u queued | %s",
              audio_mode_text(),
              capture.queued_files, aura_sync_status_text());
     lv_label_set_text(s_memory_status, status);
@@ -224,8 +224,8 @@ static void render_memory(void)
     lv_obj_clean(s_memory_list);
 
     lv_obj_t *capture_row = aura_ui_list_row(
-        s_memory_list, capture.recording ? LV_SYMBOL_AUDIO "  Recording now" : capture.status,
-        capture.storage_ready ? "Five-minute pre-roll · microSD outbox"
+        s_memory_list, capture.recording ? "Recording now" : capture.status,
+        capture.storage_ready ? "Five-minute pre-roll - microSD outbox"
                               : "Use one MBR partition formatted as FAT32");
     (void)capture_row;
     if (snapshot->proposal_count == 0) {
@@ -259,7 +259,7 @@ static void render_memory(void)
         lv_obj_set_style_bg_color(approve, lv_color_hex(0x164B2C), 0);
         lv_obj_align(approve, LV_ALIGN_BOTTOM_LEFT, 0, 0);
         lv_obj_t *label = lv_label_create(approve);
-        lv_label_set_text(label, LV_SYMBOL_OK " Approve"); lv_obj_center(label);
+        lv_label_set_text(label, "Approve"); lv_obj_center(label);
         lv_obj_add_event_cb(approve, proposal_cb, LV_EVENT_CLICKED,
                             (void *)(intptr_t)proposal->id);
         lv_obj_t *reject = lv_button_create(card);
@@ -267,7 +267,7 @@ static void render_memory(void)
         lv_obj_set_style_bg_color(reject, lv_color_hex(0x4A1D22), 0);
         lv_obj_align(reject, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
         label = lv_label_create(reject);
-        lv_label_set_text(label, LV_SYMBOL_CLOSE " Reject"); lv_obj_center(label);
+        lv_label_set_text(label, "Reject"); lv_obj_center(label);
         lv_obj_add_event_cb(reject, proposal_cb, LV_EVENT_CLICKED,
                             (void *)(intptr_t)-proposal->id);
     }

@@ -10,14 +10,15 @@
 
 static lv_obj_t *s_notification_list;
 static lv_obj_t *s_notification_title;
+static lv_obj_t *s_voice_bars[5];
 
 static void render_notifications(void);
 
 static const char *quick_mode_text(aura_mode_t mode)
 {
-    if (mode == AURA_MODE_CAPTURE) return LV_SYMBOL_AUDIO "  Mode: Capture";
-    if (mode == AURA_MODE_STEALTH) return LV_SYMBOL_EYE_OPEN "  Mode: Stealth";
-    return LV_SYMBOL_MUTE "  Mode: Silent";
+    if (mode == AURA_MODE_CAPTURE) return "Mode: Capture";
+    if (mode == AURA_MODE_STEALTH) return "Mode: Stealth";
+    return "Mode: Silent";
 }
 
 static void dismiss_notification(lv_event_t *event)
@@ -121,24 +122,47 @@ void tile_conversation_build(lv_obj_t *tile)
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
 
     lv_obj_t *orb = lv_obj_create(tile);
-    lv_obj_set_size(orb, 116, 116);
+    lv_obj_set_size(orb, 132, 132);
     lv_obj_set_style_radius(orb, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(orb, AURA_COL_ACCENT, 0);
-    lv_obj_set_style_border_width(orb, 0, 0);
+    lv_obj_set_style_bg_color(orb, lv_color_hex(0x151220), 0);
+    lv_obj_set_style_border_width(orb, 2, 0);
+    lv_obj_set_style_border_color(orb, lv_color_hex(0xB698F5), 0);
     lv_obj_clear_flag(orb, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(orb, LV_ALIGN_CENTER, 0, -35);
-    lv_obj_t *icon = lv_label_create(orb);
-    lv_label_set_text(icon, LV_SYMBOL_AUDIO);
-    lv_obj_set_style_text_color(icon, lv_color_black(), 0);
-    lv_obj_set_style_text_font(icon, &lv_font_montserrat_48, 0);
-    lv_obj_center(icon);
+    lv_obj_t *meter = lv_obj_create(orb);
+    lv_obj_set_size(meter, 88, 62);
+    lv_obj_set_style_bg_opa(meter, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(meter, 0, 0);
+    lv_obj_set_style_pad_all(meter, 0, 0);
+    lv_obj_clear_flag(meter, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_center(meter);
+    for (int i = 0; i < 5; ++i) {
+        s_voice_bars[i] = lv_obj_create(meter);
+        lv_obj_set_size(s_voice_bars[i], 9, 10);
+        lv_obj_set_style_radius(s_voice_bars[i], 5, 0);
+        lv_obj_set_style_bg_color(s_voice_bars[i], lv_color_hex(0xB698F5), 0);
+        lv_obj_set_style_border_width(s_voice_bars[i], 0, 0);
+        lv_obj_clear_flag(s_voice_bars[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_align(s_voice_bars[i], LV_ALIGN_BOTTOM_MID, (i - 2) * 17, 0);
+    }
 
     lv_obj_t *status = lv_label_create(tile);
-    lv_label_set_text(status, "Gemini Live will arrive in R4\nafter power and audio foundations pass.");
+    lv_label_set_text(status, "Voice-reactive Aura control\nLive session foundation arrives in R4");
     lv_obj_set_width(status, 340);
     lv_obj_set_style_text_align(status, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(status, AURA_COL_MUTED, 0);
     lv_obj_align(status, LV_ALIGN_CENTER, 0, 70);
+}
+
+void tile_conversation_set_level(uint8_t level)
+{
+    static const uint8_t scale[] = {55, 80, 100, 80, 55};
+    for (int i = 0; i < 5; ++i) {
+        if (!s_voice_bars[i]) continue;
+        int height = 8 + (level * scale[i] / 255) * 46 / 100;
+        lv_obj_set_height(s_voice_bars[i], height);
+        lv_obj_align(s_voice_bars[i], LV_ALIGN_BOTTOM_MID, (i - 2) * 17, 0);
+    }
 }
 
 /* ---------------- Quick settings (functional) ---------------- */
@@ -193,7 +217,7 @@ void panel_quick_build(lv_obj_t *panel)
                                      lv_color_hex(0x1C1C1F));
     lv_obj_add_event_cb(b, qs_mode_cb, LV_EVENT_CLICKED, NULL);
 
-    b = aura_ui_big_button(panel, LV_SYMBOL_EYE_OPEN "  Flashlight",
+    b = aura_ui_big_button(panel, "Flashlight",
                            lv_color_hex(0x1C1C1F));
     lv_obj_add_event_cb(b, qs_torch_cb, LV_EVENT_CLICKED, NULL);
 

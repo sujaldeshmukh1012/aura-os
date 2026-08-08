@@ -313,14 +313,13 @@ static void pin_key_cb(lv_event_t *event)
 
 static void lock_tapped(lv_event_t *event)
 {
-    (void)event;
+    lv_indev_t *indev = lv_indev_active();
+    lv_point_t point = {0};
+    if (indev) lv_indev_get_point(indev, &point);
+    /* The curved top strip is reserved for pulling down notifications. A
+     * release there must never fall through as an unlock tap. */
+    if (point.y <= 125) return;
     show_unlock();
-}
-
-static void launcher_lock_cb(lv_event_t *event)
-{
-    (void)event;
-    show_lock();
 }
 
 static void build_unlock_screen(void)
@@ -399,7 +398,7 @@ static void edge_back_cb(lv_event_t *event)
     lv_indev_get_point(indev, &point);
 
     if (code == LV_EVENT_PRESSED) {
-        s_vertical_tracking = s_state == UI_LOCKED;
+        s_vertical_tracking = s_state == UI_LOCKED && point.y <= 125;
         s_edge_tracking = s_state != UI_LOCKED &&
                           (point.x <= 30 || point.x >= AURA_LCD_H_RES - 31);
         s_edge_from_left = point.x <= 30;
@@ -438,20 +437,22 @@ static void edge_back_cb(lv_event_t *event)
 }
 
 static void launcher_button(lv_obj_t *parent, int index, int x, int y,
-                            const char *symbol, const char *name)
+                            const char *mark, const char *name, lv_color_t color)
 {
     lv_obj_t *button = lv_button_create(parent);
     lv_obj_set_size(button, 169, 108);
     lv_obj_set_pos(button, x, y);
-    lv_obj_set_style_bg_color(button, lv_color_hex(0x111114), 0);
-    lv_obj_set_style_radius(button, 22, 0);
+    lv_obj_set_style_bg_color(button, lv_color_hex(0x0D0E12), 0);
+    lv_obj_set_style_radius(button, 24, 0);
+    lv_obj_set_style_border_width(button, 1, 0);
+    lv_obj_set_style_border_color(button, lv_color_hex(0x1B1D24), 0);
     lv_obj_set_style_shadow_width(button, 0, 0);
 
     lv_obj_t *icon = lv_label_create(button);
-    lv_label_set_text(icon, symbol);
-    lv_obj_set_style_text_font(icon, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(icon, AURA_COL_ACCENT, 0);
-    lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 5);
+    lv_label_set_text(icon, mark);
+    lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(icon, color, 0);
+    lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 7);
 
     lv_obj_t *label = lv_label_create(button);
     lv_label_set_text(label, name);
@@ -471,26 +472,30 @@ static void build_launcher(void)
     lv_obj_t *title = lv_label_create(s_launcher);
     lv_label_set_text(title, "Aura");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_LEFT, AURA_SCREEN_SAFE_SIDE,
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, AURA_SCREEN_SAFE_SIDE + 58,
                  AURA_SCREEN_SAFE_TOP);
 
-    lv_obj_t *lock = lv_button_create(s_launcher);
-    lv_obj_set_size(lock, 90, 52);
-    lv_obj_set_style_bg_color(lock, lv_color_hex(0x1C1C1F), 0);
-    lv_obj_set_style_radius(lock, 18, 0);
-    lv_obj_align(lock, LV_ALIGN_TOP_RIGHT, -AURA_SCREEN_SAFE_SIDE,
+    lv_obj_t *mark = lv_obj_create(s_launcher);
+    lv_obj_set_size(mark, 46, 46);
+    lv_obj_set_style_radius(mark, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(mark, lv_color_hex(0x10121B), 0);
+    lv_obj_set_style_border_width(mark, 2, 0);
+    lv_obj_set_style_border_color(mark, AURA_COL_ACCENT, 0);
+    lv_obj_clear_flag(mark, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_align(mark, LV_ALIGN_TOP_LEFT, AURA_SCREEN_SAFE_SIDE,
                  AURA_SCREEN_SAFE_TOP - 8);
-    lv_obj_t *label = lv_label_create(lock);
-    lv_label_set_text(label, LV_SYMBOL_HOME " Lock");
-    lv_obj_center(label);
-    lv_obj_add_event_cb(lock, launcher_lock_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *a = lv_label_create(mark);
+    lv_label_set_text(a, "A");
+    lv_obj_set_style_text_font(a, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(a, AURA_COL_ACCENT, 0);
+    lv_obj_center(a);
 
-    launcher_button(s_launcher, 0, 24, 100, LV_SYMBOL_LIST, "Mission");
-    launcher_button(s_launcher, 1, 217, 100, LV_SYMBOL_BELL, "Timer");
-    launcher_button(s_launcher, 2, 24, 222, LV_SYMBOL_AUDIO, "Capture");
-    launcher_button(s_launcher, 3, 217, 222, LV_SYMBOL_FILE, "Calendar");
-    launcher_button(s_launcher, 4, 24, 344, LV_SYMBOL_AUDIO, "Talk");
-    launcher_button(s_launcher, 5, 217, 344, LV_SYMBOL_SETTINGS, "Settings");
+    launcher_button(s_launcher, 0, 24, 100, "MC", "Mission", lv_color_hex(0x8DA2FB));
+    launcher_button(s_launcher, 1, 217, 100, "TM", "Timer", lv_color_hex(0x70C7A5));
+    launcher_button(s_launcher, 2, 24, 222, "REC", "Capture", lv_color_hex(0xE27676));
+    launcher_button(s_launcher, 3, 217, 222, "CAL", "Calendar", lv_color_hex(0xE0B36A));
+    launcher_button(s_launcher, 4, 24, 344, "AI", "Talk", lv_color_hex(0xB698F5));
+    launcher_button(s_launcher, 5, 217, 344, "SYS", "Settings", lv_color_hex(0x9DA0AA));
 }
 
 static void build_app_screens(void)
@@ -514,10 +519,10 @@ static void build_app_screens(void)
 static const char *mode_badge_text(void)
 {
     switch (aura_mode_get()) {
-    case AURA_MODE_CAPTURE: return LV_SYMBOL_AUDIO "  CAPTURE";
-    case AURA_MODE_STEALTH: return LV_SYMBOL_EYE_OPEN "  STEALTH";
-    case AURA_MODE_CONVERSATION: return LV_SYMBOL_WIFI "  LIVE";
-    default: return LV_SYMBOL_MUTE "  SILENT";
+    case AURA_MODE_CAPTURE: return "CAPTURE";
+    case AURA_MODE_STEALTH: return "STEALTH";
+    case AURA_MODE_CONVERSATION: return "LIVE";
+    default: return "SILENT";
     }
 }
 

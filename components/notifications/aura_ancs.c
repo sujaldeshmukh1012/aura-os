@@ -36,6 +36,11 @@ uint16_t control_point_handle;
 uint16_t svc_e_handle;
 static uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 
+bool aura_ancs_is_connected(void)
+{
+    return s_conn_handle != BLE_HS_CONN_HANDLE_NONE;
+}
+
 static void periodic_timer_callback(void* arg);
 esp_timer_handle_t periodic_timer;
 
@@ -513,6 +518,7 @@ ble_ancs_gap_event(struct ble_gap_event *event, void *arg)
                     event->connect.status);
         if (event->connect.status == 0) {
             s_conn_handle = event->connect.conn_handle;
+            aura_notifications_connection_changed();
             rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
             assert(rc == 0);
             ble_ancs_print_conn_desc(&desc);
@@ -547,6 +553,7 @@ ble_ancs_gap_event(struct ble_gap_event *event, void *arg)
 
     case BLE_GAP_EVENT_DISCONNECT:
         s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+        aura_notifications_connection_changed();
         MODLOG_DFLT(INFO, "disconnect; reason=%d ", event->disconnect.reason);
         ble_ancs_print_conn_desc(&event->disconnect.conn);
         MODLOG_DFLT(INFO, "\n");

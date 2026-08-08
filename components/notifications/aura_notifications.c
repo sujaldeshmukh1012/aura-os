@@ -46,6 +46,16 @@ size_t aura_notifications_count(void)
     return count;
 }
 
+bool aura_notifications_phone_connected(void)
+{
+    return aura_ancs_is_connected();
+}
+
+void aura_notifications_connection_changed(void)
+{
+    changed();
+}
+
 void aura_notifications_received(uint32_t uid, const char *app,
                                  const char *title, const char *body)
 {

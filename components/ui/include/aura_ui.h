@@ -25,7 +25,7 @@ extern "C" {
 #define AURA_COL_BG      lv_color_black()
 #define AURA_COL_TEXT    lv_color_hex(0xF2F2F2)
 #define AURA_COL_MUTED   lv_color_hex(0x8A8A8E)
-#define AURA_COL_ACCENT  lv_color_hex(0x38B6FF)   /* the "Jarvis blue" */
+#define AURA_COL_ACCENT  lv_color_hex(0x8290FF)   /* restrained indigo */
 #define AURA_COL_WARN    lv_color_hex(0xFF9F0A)
 #define AURA_COL_OK      lv_color_hex(0x30D158)
 
@@ -56,6 +56,7 @@ void tile_calendar_build(lv_obj_t *tile);   /* Phase 3: stub list for now */
 void tile_mission_build(lv_obj_t *tile);    /* Phase 3: stub list for now */
 void tile_memory_build(lv_obj_t *tile);     /* Phase 4: stub for now */
 void tile_conversation_build(lv_obj_t *tile);
+void tile_conversation_set_level(uint8_t level);
 void tile_settings_build(lv_obj_t *tile);
 void panel_quick_build(lv_obj_t *panel);
 void panel_notif_build(lv_obj_t *panel);    /* Phase 3: ANCS feeds this */
