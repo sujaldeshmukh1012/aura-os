@@ -41,15 +41,15 @@ static void render_state(void)
     switch (s_state) {
     case TIMER_RUNNING:
         lv_label_set_text(s_status_label, "COUNTING DOWN");
-        lv_label_set_text(s_primary_label, LV_SYMBOL_PAUSE "  Pause");
+        lv_label_set_text(s_primary_label, "Pause");
         break;
     case TIMER_PAUSED:
         lv_label_set_text(s_status_label, "PAUSED");
-        lv_label_set_text(s_primary_label, LV_SYMBOL_PLAY "  Resume");
+        lv_label_set_text(s_primary_label, "Resume");
         break;
     default:
         lv_label_set_text(s_status_label, "READY");
-        lv_label_set_text(s_primary_label, LV_SYMBOL_PLAY "  Start");
+        lv_label_set_text(s_primary_label, "Start");
         break;
     }
 }
@@ -65,7 +65,7 @@ static void timer_tick(lv_timer_t *timer)
         s_state = TIMER_IDLE;
         render_time(0);
         lv_label_set_text(s_status_label, "FINISHED");
-        lv_label_set_text(s_primary_label, LV_SYMBOL_PLAY "  Start again");
+        lv_label_set_text(s_primary_label, "Start again");
         (void)aura_post(AURA_EVT_ALARM_FIRED, &(int){-1}, sizeof(int));
         return;
     }
@@ -160,7 +160,7 @@ void tile_clock_build(lv_obj_t *tile)
     lv_obj_set_style_radius(minus, 20, 0);
     lv_obj_align(minus, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_t *label = lv_label_create(minus);
-    lv_label_set_text(label, LV_SYMBOL_MINUS);
+    lv_label_set_text(label, "-");
     lv_obj_set_style_text_font(label, &lv_font_montserrat_28, 0);
     lv_obj_center(label);
     lv_obj_add_event_cb(minus, adjust_cb, LV_EVENT_CLICKED, (void *)(intptr_t)-1);
@@ -175,7 +175,7 @@ void tile_clock_build(lv_obj_t *tile)
     lv_obj_set_style_radius(plus, 20, 0);
     lv_obj_align(plus, LV_ALIGN_RIGHT_MID, -10, 0);
     label = lv_label_create(plus);
-    lv_label_set_text(label, LV_SYMBOL_PLUS);
+    lv_label_set_text(label, "+");
     lv_obj_set_style_text_font(label, &lv_font_montserrat_28, 0);
     lv_obj_center(label);
     lv_obj_add_event_cb(plus, adjust_cb, LV_EVENT_CLICKED, (void *)(intptr_t)1);
@@ -210,10 +210,10 @@ void tile_clock_build(lv_obj_t *tile)
     lv_obj_set_style_pad_column(actions, 10, 0);
     lv_obj_clear_flag(actions, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *primary = compact_button(actions, LV_SYMBOL_PLAY "  Start",
+    lv_obj_t *primary = compact_button(actions, "Start",
                                        lv_color_hex(0x0B4968), 0, primary_cb);
     s_primary_label = lv_obj_get_child(primary, 0);
-    compact_button(actions, LV_SYMBOL_REFRESH "  Reset",
+    compact_button(actions, "Reset",
                    lv_color_hex(0x1C1C1F), 0, reset_cb);
 
     render_state();
