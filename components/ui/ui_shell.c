@@ -408,7 +408,11 @@ static void edge_back_cb(lv_event_t *event)
     lv_indev_get_point(indev, &point);
 
     if (code == LV_EVENT_PRESSED) {
-        s_vertical_tracking = s_state == UI_LAUNCHER && point.y <= 90;
+        /* A downward pull is a launcher-wide system gesture.  Restricting its
+         * starting point to the curved top strip made it nearly impossible to
+         * trigger on the physical display.  A normal tile tap has negligible
+         * travel and is unaffected by the distance/direction checks below. */
+        s_vertical_tracking = s_state == UI_LAUNCHER;
         s_edge_tracking = s_state != UI_LOCKED &&
                           (point.x <= 30 || point.x >= AURA_LCD_H_RES - 31);
         s_edge_from_left = point.x <= 30;
@@ -418,7 +422,7 @@ static void edge_back_cb(lv_event_t *event)
     if (s_vertical_tracking && code == LV_EVENT_PRESSING) {
         int dx = point.x - s_edge_start.x;
         int dy = point.y - s_edge_start.y;
-        if (dy >= 80 && LV_ABS(dx) <= 90) {
+        if (dy >= 60 && LV_ABS(dx) <= 75) {
             s_vertical_tracking = false;
             aura_ui_show_notifications();
             lv_indev_stop_processing(indev);

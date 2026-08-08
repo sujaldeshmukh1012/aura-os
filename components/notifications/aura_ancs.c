@@ -789,16 +789,17 @@ aura_ancs_init(void)
     ble_hs_cfg.sync_cb = ble_ancs_on_sync;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
+    /* Match the pairing profile used by Espressif's ANCS reference.  The
+     * watch has no trusted BLE passkey display/input path, so iOS should use
+     * bonded "Just Works" encryption.  Requiring LE Secure Connections and
+     * exchanging identity keys here caused some iOS central apps to tear the
+     * link down before encryption completed (ENC_CHANGE status ENOTCONN). */
     ble_hs_cfg.sm_bonding = 1;
-    /* Enable the appropriate bit masks to make sure the keys
-     * that are needed are exchanged
-     */
-    ble_hs_cfg.sm_our_key_dist |= BLE_SM_PAIR_KEY_DIST_ENC |
-                                  BLE_SM_PAIR_KEY_DIST_ID;
-    ble_hs_cfg.sm_their_key_dist |= BLE_SM_PAIR_KEY_DIST_ENC |
-                                    BLE_SM_PAIR_KEY_DIST_ID;
-    ble_hs_cfg.sm_sc = 1;
+    ble_hs_cfg.sm_mitm = 0;
+    ble_hs_cfg.sm_sc = 0;
     ble_hs_cfg.sm_io_cap = BLE_HS_IO_NO_INPUT_OUTPUT;
+    ble_hs_cfg.sm_our_key_dist = BLE_SM_PAIR_KEY_DIST_ENC;
+    ble_hs_cfg.sm_their_key_dist = BLE_SM_PAIR_KEY_DIST_ENC;
 
     /* Set the default device name. */
     rc = ble_svc_gap_device_name_set("Aura Watch");
