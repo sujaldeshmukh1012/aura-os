@@ -2,6 +2,8 @@
 #include "aura_core.h"
 #include "aura_config.h"
 #include "aura_sync.h"
+#include "aura_wifi.h"
+#include "aura_notifications.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -39,6 +41,11 @@ static lv_obj_t *s_launcher;
 static lv_obj_t *s_apps[6];
 static lv_obj_t *s_notification_panel;
 static lv_obj_t *s_mode_badge;
+static lv_obj_t *s_mode_icon;
+static lv_obj_t *s_mode_label;
+static lv_obj_t *s_launcher_wifi;
+static lv_obj_t *s_launcher_phone;
+static lv_obj_t *s_launcher_notifications;
 static lv_obj_t *s_current_app;
 static lv_obj_t *s_pin_hint;
 static lv_obj_t *s_pin_value;
@@ -53,6 +60,7 @@ static bool s_edge_tracking;
 static bool s_edge_from_left;
 static lv_point_t s_edge_start;
 static bool s_vertical_tracking;
+static bool s_notifications_from_locked;
 
 /* ---------------- shared widgets ---------------- */
 
@@ -151,18 +159,25 @@ static void show_launcher(void)
     show_only(s_launcher);
 }
 
-static void show_notifications(void)
+void aura_ui_show_notifications(void)
 {
+    s_notifications_from_locked = s_state == UI_LOCKED;
     s_state = UI_NOTIFICATIONS;
     s_current_app = NULL;
     power_mgr_set_screen_saver_active(false);
     show_only(s_notification_panel);
 }
 
+void aura_ui_close_notifications(void)
+{
+    if (s_notifications_from_locked) show_lock();
+    else show_launcher();
+}
+
 static void navigate_back(void)
 {
     if (s_state == UI_APP) show_launcher();
-    else if (s_state == UI_NOTIFICATIONS) show_lock();
+    else if (s_state == UI_NOTIFICATIONS) aura_ui_close_notifications();
     else if (s_state != UI_LOCKED) show_lock();
 }
 
@@ -313,12 +328,7 @@ static void pin_key_cb(lv_event_t *event)
 
 static void lock_tapped(lv_event_t *event)
 {
-    lv_indev_t *indev = lv_indev_active();
-    lv_point_t point = {0};
-    if (indev) lv_indev_get_point(indev, &point);
-    /* The curved top strip is reserved for pulling down notifications. A
-     * release there must never fall through as an unlock tap. */
-    if (point.y <= 125) return;
+    (void)event;
     show_unlock();
 }
 
@@ -385,8 +395,8 @@ static void app_open_cb(lv_event_t *event)
         aura_sync_request_refresh();
 }
 
-/* Static gestures: inward edge swipe is Back; downward lock-face swipe opens
- * the notification shade. No object is translated while tracking either. */
+/* Static gestures: inward edge swipe is Back; downward launcher swipe opens
+ * notifications. The locked watch face uses its notification-count button. */
 /* System back gesture: only touches beginning in the outer 30 px qualify.
  * This preserves vertical scrolling and in-app horizontal controls while
  * making a deliberate inward swipe from either curved edge act as Back. */
@@ -398,7 +408,7 @@ static void edge_back_cb(lv_event_t *event)
     lv_indev_get_point(indev, &point);
 
     if (code == LV_EVENT_PRESSED) {
-        s_vertical_tracking = s_state == UI_LOCKED && point.y <= 125;
+        s_vertical_tracking = s_state == UI_LAUNCHER && point.y <= 90;
         s_edge_tracking = s_state != UI_LOCKED &&
                           (point.x <= 30 || point.x >= AURA_LCD_H_RES - 31);
         s_edge_from_left = point.x <= 30;
@@ -410,7 +420,7 @@ static void edge_back_cb(lv_event_t *event)
         int dy = point.y - s_edge_start.y;
         if (dy >= 80 && LV_ABS(dx) <= 90) {
             s_vertical_tracking = false;
-            show_notifications();
+            aura_ui_show_notifications();
             lv_indev_stop_processing(indev);
             lv_indev_wait_release(indev);
             return;
@@ -436,8 +446,71 @@ static void edge_back_cb(lv_event_t *event)
     }
 }
 
+static lv_obj_t *icon_part(lv_obj_t *parent, int x, int y, int w, int h,
+                           lv_color_t color, int radius)
+{
+    lv_obj_t *part = lv_obj_create(parent);
+    lv_obj_set_size(part, w, h);
+    lv_obj_set_pos(part, x, y);
+    lv_obj_set_style_bg_color(part, color, 0);
+    lv_obj_set_style_border_width(part, 0, 0);
+    lv_obj_set_style_radius(part, radius, 0);
+    lv_obj_set_style_pad_all(part, 0, 0);
+    lv_obj_clear_flag(part, LV_OBJ_FLAG_SCROLLABLE);
+    return part;
+}
+
+static void launcher_icon(lv_obj_t *button, int index, lv_color_t color)
+{
+    lv_obj_t *icon = lv_obj_create(button);
+    lv_obj_set_size(icon, 64, 48);
+    lv_obj_set_style_bg_opa(icon, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(icon, 0, 0);
+    lv_obj_set_style_pad_all(icon, 0, 0);
+    lv_obj_clear_flag(icon, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 7);
+
+    if (index == 0) { /* Mission list */
+        for (int i = 0; i < 3; ++i) {
+            icon_part(icon, 5, 7 + i * 14, 7, 7, color, LV_RADIUS_CIRCLE);
+            icon_part(icon, 18, 9 + i * 14, 39, 4, color, 2);
+        }
+    } else if (index == 1) { /* Timer dial */
+        lv_obj_t *dial = icon_part(icon, 13, 1, 38, 38, lv_color_hex(0x0D0E12),
+                                   LV_RADIUS_CIRCLE);
+        lv_obj_set_style_border_width(dial, 3, 0);
+        lv_obj_set_style_border_color(dial, color, 0);
+        icon_part(dial, 17, 8, 3, 12, color, 2);
+        icon_part(dial, 18, 18, 10, 3, color, 2);
+    } else if (index == 2) { /* Capture record */
+        lv_obj_t *ring = icon_part(icon, 10, 0, 42, 42, lv_color_hex(0x0D0E12),
+                                   LV_RADIUS_CIRCLE);
+        lv_obj_set_style_border_width(ring, 3, 0);
+        lv_obj_set_style_border_color(ring, color, 0);
+        icon_part(icon, 24, 14, 14, 14, color, LV_RADIUS_CIRCLE);
+    } else if (index == 3) { /* Calendar */
+        lv_obj_t *cal = icon_part(icon, 10, 3, 44, 38, lv_color_hex(0x0D0E12), 7);
+        lv_obj_set_style_border_width(cal, 3, 0);
+        lv_obj_set_style_border_color(cal, color, 0);
+        icon_part(cal, 0, 8, 38, 3, color, 0);
+        icon_part(cal, 9, 18, 6, 6, color, 2);
+        icon_part(cal, 23, 18, 6, 6, color, 2);
+    } else if (index == 4) { /* Talk waveform */
+        static const int heights[] = {14, 28, 40, 28, 14};
+        for (int i = 0; i < 5; ++i)
+            icon_part(icon, 7 + i * 12, 22 - heights[i] / 2, 7, heights[i],
+                      color, 4);
+    } else { /* Settings sliders */
+        for (int i = 0; i < 3; ++i) {
+            icon_part(icon, 6, 8 + i * 14, 50, 3, color, 2);
+            icon_part(icon, 14 + ((i * 17) % 32), 4 + i * 14, 10, 10,
+                      color, LV_RADIUS_CIRCLE);
+        }
+    }
+}
+
 static void launcher_button(lv_obj_t *parent, int index, int x, int y,
-                            const char *mark, const char *name, lv_color_t color)
+                            const char *name, lv_color_t color)
 {
     lv_obj_t *button = lv_button_create(parent);
     lv_obj_set_size(button, 169, 108);
@@ -448,11 +521,7 @@ static void launcher_button(lv_obj_t *parent, int index, int x, int y,
     lv_obj_set_style_border_color(button, lv_color_hex(0x1B1D24), 0);
     lv_obj_set_style_shadow_width(button, 0, 0);
 
-    lv_obj_t *icon = lv_label_create(button);
-    lv_label_set_text(icon, mark);
-    lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(icon, color, 0);
-    lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 7);
+    launcher_icon(button, index, color);
 
     lv_obj_t *label = lv_label_create(button);
     lv_label_set_text(label, name);
@@ -464,38 +533,50 @@ static void launcher_button(lv_obj_t *parent, int index, int x, int y,
                         (void *)(uintptr_t)index);
 }
 
+static void refresh_launcher_status(void)
+{
+    if (!s_launcher_wifi) return;
+    bool wifi = aura_wifi_state() == AURA_WIFI_CONNECTED;
+    bool phone = aura_notifications_phone_connected();
+    size_t count = aura_notifications_count();
+    lv_label_set_text(s_launcher_wifi, wifi ? "Wi-Fi ON" : "Wi-Fi OFF");
+    lv_obj_set_style_text_color(s_launcher_wifi, wifi ? AURA_COL_OK : AURA_COL_MUTED, 0);
+    lv_label_set_text(s_launcher_phone, phone ? "Phone ON" : "Phone OFF");
+    lv_obj_set_style_text_color(s_launcher_phone, phone ? AURA_COL_OK : AURA_COL_MUTED, 0);
+    lv_label_set_text_fmt(s_launcher_notifications, "%u alerts", (unsigned)count);
+}
+
+static void launcher_status_changed(void *h, esp_event_base_t b, int32_t id, void *d)
+{
+    (void)h; (void)b; (void)id; (void)d;
+    bsp_display_lock(0);
+    refresh_launcher_status();
+    bsp_display_unlock();
+}
+
 static void build_launcher(void)
 {
     s_launcher = lv_obj_create(s_root);
     style_screen(s_launcher);
 
-    lv_obj_t *title = lv_label_create(s_launcher);
-    lv_label_set_text(title, "Aura");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_LEFT, AURA_SCREEN_SAFE_SIDE + 58,
-                 AURA_SCREEN_SAFE_TOP);
+    s_launcher_wifi = lv_label_create(s_launcher);
+    lv_obj_set_style_text_font(s_launcher_wifi, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(s_launcher_wifi, 24, AURA_SCREEN_SAFE_TOP + 4);
+    s_launcher_phone = lv_label_create(s_launcher);
+    lv_obj_set_style_text_font(s_launcher_phone, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(s_launcher_phone, 145, AURA_SCREEN_SAFE_TOP + 4);
+    s_launcher_notifications = lv_label_create(s_launcher);
+    lv_obj_set_style_text_font(s_launcher_notifications, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_launcher_notifications, AURA_COL_ACCENT, 0);
+    lv_obj_set_pos(s_launcher_notifications, 292, AURA_SCREEN_SAFE_TOP + 4);
+    refresh_launcher_status();
 
-    lv_obj_t *mark = lv_obj_create(s_launcher);
-    lv_obj_set_size(mark, 46, 46);
-    lv_obj_set_style_radius(mark, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(mark, lv_color_hex(0x10121B), 0);
-    lv_obj_set_style_border_width(mark, 2, 0);
-    lv_obj_set_style_border_color(mark, AURA_COL_ACCENT, 0);
-    lv_obj_clear_flag(mark, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_align(mark, LV_ALIGN_TOP_LEFT, AURA_SCREEN_SAFE_SIDE,
-                 AURA_SCREEN_SAFE_TOP - 8);
-    lv_obj_t *a = lv_label_create(mark);
-    lv_label_set_text(a, "A");
-    lv_obj_set_style_text_font(a, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(a, AURA_COL_ACCENT, 0);
-    lv_obj_center(a);
-
-    launcher_button(s_launcher, 0, 24, 100, "MC", "Mission", lv_color_hex(0x8DA2FB));
-    launcher_button(s_launcher, 1, 217, 100, "TM", "Timer", lv_color_hex(0x70C7A5));
-    launcher_button(s_launcher, 2, 24, 222, "REC", "Capture", lv_color_hex(0xE27676));
-    launcher_button(s_launcher, 3, 217, 222, "CAL", "Calendar", lv_color_hex(0xE0B36A));
-    launcher_button(s_launcher, 4, 24, 344, "AI", "Talk", lv_color_hex(0xB698F5));
-    launcher_button(s_launcher, 5, 217, 344, "SYS", "Settings", lv_color_hex(0x9DA0AA));
+    launcher_button(s_launcher, 0, 24, 100, "Mission", lv_color_hex(0x8DA2FB));
+    launcher_button(s_launcher, 1, 217, 100, "Timer", lv_color_hex(0x70C7A5));
+    launcher_button(s_launcher, 2, 24, 222, "Capture", lv_color_hex(0xE27676));
+    launcher_button(s_launcher, 3, 217, 222, "Calendar", lv_color_hex(0xE0B36A));
+    launcher_button(s_launcher, 4, 24, 344, "Talk", lv_color_hex(0xB698F5));
+    launcher_button(s_launcher, 5, 217, 344, "Settings", lv_color_hex(0x9DA0AA));
 }
 
 static void build_app_screens(void)
@@ -526,26 +607,54 @@ static const char *mode_badge_text(void)
     }
 }
 
+static void refresh_mode_badge(void)
+{
+    aura_mode_t mode = aura_mode_get();
+    lv_label_set_text(s_mode_label, mode_badge_text());
+    lv_color_t color = mode == AURA_MODE_CAPTURE ? lv_color_hex(0xE27676)
+                       : mode == AURA_MODE_STEALTH ? lv_color_hex(0xE0B36A)
+                       : mode == AURA_MODE_CONVERSATION ? lv_color_hex(0xB698F5)
+                                                        : AURA_COL_MUTED;
+    lv_obj_set_style_bg_color(s_mode_icon, color, 0);
+    lv_obj_set_style_bg_opa(s_mode_icon,
+                            mode == AURA_MODE_SILENT ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(s_mode_icon, mode == AURA_MODE_SILENT ? 2 : 0, 0);
+    lv_obj_set_style_border_color(s_mode_icon, color, 0);
+    lv_obj_set_style_text_color(s_mode_label, color, 0);
+}
+
 static void mode_badge_changed(void *h, esp_event_base_t b, int32_t id, void *d)
 {
     (void)h; (void)b; (void)id; (void)d;
     bsp_display_lock(0);
-    lv_label_set_text(s_mode_badge, mode_badge_text());
+    refresh_mode_badge();
     bsp_display_unlock();
 }
 
 static void build_mode_badge(void)
 {
-    s_mode_badge = lv_label_create(s_root);
-    lv_label_set_text(s_mode_badge, mode_badge_text());
-    lv_obj_set_style_text_font(s_mode_badge, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(s_mode_badge, AURA_COL_MUTED, 0);
+    s_mode_badge = lv_obj_create(s_root);
+    lv_obj_set_size(s_mode_badge, LV_SIZE_CONTENT, 30);
     lv_obj_set_style_bg_color(s_mode_badge, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(s_mode_badge, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(s_mode_badge, 0, 0);
     lv_obj_set_style_pad_hor(s_mode_badge, 10, 0);
-    lv_obj_set_style_pad_ver(s_mode_badge, 4, 0);
+    lv_obj_set_style_pad_ver(s_mode_badge, 5, 0);
+    lv_obj_set_style_pad_column(s_mode_badge, 7, 0);
     lv_obj_set_style_radius(s_mode_badge, 12, 0);
+    lv_obj_set_flex_flow(s_mode_badge, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(s_mode_badge, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(s_mode_badge, LV_OBJ_FLAG_SCROLLABLE);
+    s_mode_icon = lv_obj_create(s_mode_badge);
+    lv_obj_set_size(s_mode_icon, 10, 10);
+    lv_obj_set_style_radius(s_mode_icon, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_pad_all(s_mode_icon, 0, 0);
+    lv_obj_clear_flag(s_mode_icon, LV_OBJ_FLAG_SCROLLABLE);
+    s_mode_label = lv_label_create(s_mode_badge);
+    lv_obj_set_style_text_font(s_mode_label, &lv_font_montserrat_14, 0);
     lv_obj_align(s_mode_badge, LV_ALIGN_BOTTOM_MID, 0, -8);
+    refresh_mode_badge();
 }
 
 /* ---------------- power/button events ---------------- */
@@ -553,6 +662,10 @@ static void build_mode_badge(void)
 static void on_btn_back(void *h, esp_event_base_t b, int32_t id, void *d)
 {
     (void)h; (void)b; (void)id; (void)d;
+    if (s_state == UI_LOCKED) {
+        power_mgr_lock_screen_off();
+        return;
+    }
     bsp_display_lock(0);
     navigate_back();
     bsp_display_unlock();
@@ -610,6 +723,10 @@ esp_err_t aura_ui_start(void)
     err = aura_subscribe(AURA_EVT_WAKE, on_wake, NULL);
     if (err != ESP_OK) return err;
     err = aura_subscribe(AURA_EVT_MODE_CHANGED, mode_badge_changed, NULL);
+    if (err != ESP_OK) return err;
+    err = aura_subscribe(AURA_EVT_SETTINGS_CHANGED, launcher_status_changed, NULL);
+    if (err != ESP_OK) return err;
+    err = aura_subscribe(AURA_EVT_NOTIFICATIONS_CHANGED, launcher_status_changed, NULL);
     if (err != ESP_OK) return err;
 
     ESP_LOGI(TAG, "static lock/launcher shell up (%s)",

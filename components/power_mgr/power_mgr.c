@@ -12,13 +12,14 @@
 
 static const char *TAG = "power";
 
-typedef enum { PWR_ACTIVE, PWR_DIM, PWR_ASLEEP } pwr_state_t;
+typedef enum { PWR_ACTIVE, PWR_DIM, PWR_BLANKED, PWR_ASLEEP } pwr_state_t;
 
 static volatile pwr_state_t s_state = PWR_ACTIVE;
 static int64_t s_last_activity_us;
 static uint32_t s_wake_locks;
 static bool s_sleep_requested;
 static bool s_screen_saver_active;
+static volatile bool s_button_woke_sleep;
 static TaskHandle_t s_task;
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 static uint8_t s_active_brightness = AURA_ACTIVE_BRIGHTNESS_PCT;
@@ -39,7 +40,7 @@ static void mode_changed(void *handler, esp_event_base_t base, int32_t id, void 
 void power_mgr_kick(void)
 {
     s_last_activity_us = esp_timer_get_time();
-    if (s_state == PWR_DIM) {
+    if (s_state == PWR_DIM || s_state == PWR_BLANKED) {
         bsp_display_brightness_set(s_active_brightness);
         s_state = PWR_ACTIVE;
     }
@@ -80,6 +81,13 @@ static void boot_btn_task(void *arg)
     gpio_config(&io);
 
     for (;;) {
+        if (s_button_woke_sleep) {
+            while (gpio_get_level(AURA_BTN_BOOT) == 0)
+                vTaskDelay(pdMS_TO_TICKS(20));
+            s_button_woke_sleep = false;
+            vTaskDelay(pdMS_TO_TICKS(80));
+            continue;
+        }
         if (gpio_get_level(AURA_BTN_BOOT) == 0) {           /* pressed (active low) */
             int64_t t0 = esp_timer_get_time();
             while (gpio_get_level(AURA_BTN_BOOT) == 0) {
@@ -87,10 +95,11 @@ static void boot_btn_task(void *arg)
                 if (esp_timer_get_time() - t0 > 700 * 1000) break;
             }
             bool long_press = (esp_timer_get_time() - t0) > 700 * 1000;
+            bool was_blanked = s_state == PWR_BLANKED;
             power_mgr_kick();
             if (s_state == PWR_ASLEEP) {
                 /* button also wakes: handled by wake path, don't double-post */
-            } else {
+            } else if (!was_blanked) {
                 aura_post(long_press ? AURA_EVT_BTN_HOME : AURA_EVT_BTN_BACK, NULL, 0);
             }
             /* wait for release on long press */
@@ -143,6 +152,7 @@ static void enter_sleep_loop(void)
         uint32_t causes = esp_sleep_get_wakeup_causes();
         if (causes & BIT(ESP_SLEEP_WAKEUP_GPIO)) {
             if (gpio_get_level(AURA_BTN_BOOT) == 0) {
+                s_button_woke_sleep = true;
                 break;                           /* button wake: immediate */
             }
             /* FT5x06 TP_INT is a short pulse, so waiting for a second edge
@@ -210,6 +220,19 @@ void power_mgr_sleep_now(void)
     portENTER_CRITICAL(&s_lock);
     s_sleep_requested = true;
     portEXIT_CRITICAL(&s_lock);
+}
+
+void power_mgr_lock_screen_off(void)
+{
+    portENTER_CRITICAL(&s_lock);
+    bool capture_active = (s_wake_locks & POWER_WAKE_LOCK_CAPTURE) != 0;
+    if (capture_active) {
+        s_state = PWR_BLANKED;
+    } else {
+        s_sleep_requested = true;
+    }
+    portEXIT_CRITICAL(&s_lock);
+    if (capture_active) bsp_display_brightness_set(0);
 }
 
 void power_mgr_set_screen_saver_active(bool active)

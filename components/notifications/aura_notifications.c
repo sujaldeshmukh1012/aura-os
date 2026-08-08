@@ -111,3 +111,18 @@ esp_err_t aura_notifications_dismiss(uint32_t uid)
     if (err == ESP_OK) aura_notifications_removed(uid);
     return err;
 }
+
+esp_err_t aura_notifications_clear_all(void)
+{
+    aura_notification_t items[AURA_NOTIFICATION_MAX];
+    size_t count = aura_notifications_snapshot(items, AURA_NOTIFICATION_MAX);
+    esp_err_t result = ESP_OK;
+    for (size_t i = 0; i < count; ++i) {
+        esp_err_t err = aura_ancs_dismiss(items[i].uid);
+        if (err != ESP_OK) result = err;
+        /* Clear is also a local privacy action. Remove the cached card even
+         * when the phone disconnected before accepting the ANCS dismiss. */
+        aura_notifications_removed(items[i].uid);
+    }
+    return result;
+}

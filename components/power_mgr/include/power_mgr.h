@@ -37,6 +37,7 @@ void power_mgr_stay_awake(bool on);   /* e.g. while an alarm rings or Gemini tal
 void power_mgr_wake_lock_acquire(power_wake_lock_t lock);
 void power_mgr_wake_lock_release(power_wake_lock_t lock);
 void power_mgr_sleep_now(void);
+void power_mgr_lock_screen_off(void);
 
 /* The lock face uses an AMOLED-safe always-on mode: it may dim, but automatic
  * panel sleep is deferred until the user enters the interactive UI. Explicit

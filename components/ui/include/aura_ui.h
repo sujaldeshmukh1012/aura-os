@@ -46,6 +46,8 @@ lv_obj_t *aura_ui_big_button(lv_obj_t *parent, const char *txt, lv_color_t col);
 lv_obj_t *aura_ui_list_row(lv_obj_t *parent, const char *title, const char *sub);
 void      aura_ui_apply_safe_area(lv_obj_t *obj);
 void      aura_ui_go_home(void);
+void      aura_ui_show_notifications(void);
+void      aura_ui_close_notifications(void);
 esp_err_t aura_ui_reset_passcode(void);
 
 /* Built-in tile builders (registered by aura_ui_start) */

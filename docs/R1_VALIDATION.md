@@ -7,26 +7,37 @@ Flash this branch only after confirming the build succeeds.
 1. Boot lands on a true-black lock face with Wi-Fi/Phone status dots, battery,
    large spaced time, date below it, steps/event, notification count, unlock
    hint, and the audio mode at bottom.
-2. Notification title/body content never appears on the lock face.
-3. Swipe downward starting in the top strip to open detailed notification
-   cards. A tap/release inside that strip must not open the PIN screen.
-4. Dismiss a notification; the shade and lock-face count update immediately.
+2. Notification title/body content never appears on the lock face. Tap the
+   notification-count button to open detailed notification cards; lock-screen
+   swipe-down does nothing.
+3. The notification screen has a title/Clear All top bar and Home bottom bar.
+   Clear All removes local cards even if the phone disconnected. Home returns
+   to the lock face when notifications were opened while locked.
+4. Dismiss one notification; the panel, lock count, and launcher count update.
 5. Tap the lock face to open the large white-on-black numeric PIN keypad.
-6. Unlock to the Aura-marked static launcher containing Mission, Timer, Capture,
-   Calendar, Talk, and Settings. There is no Notifications or Lock button;
-   Capture uses REC and Talk uses AI so they are visually distinct.
-7. Open each app. The mode badge remains visible at bottom-center. An inward
+6. Unlock to the static launcher containing Mission, Timer, Capture, Calendar,
+   Talk, and Settings. There is no Aura name/mark, Notifications, or Lock button.
+   All six apps use distinct code-drawn icons and retain their individual color.
+7. The unlocked launcher top row shows Wi-Fi status, Phone/BLE status, and alert
+   count. Swipe down from this top row to open notifications; Home returns to
+   the unlocked launcher rather than bypassing or re-triggering the PIN.
+8. Open each app. The mode badge remains visible at bottom-center with a hollow
+   Silent, amber Stealth, or red Capture indicator. An inward
    swipe from either edge returns to the launcher.
-8. Talk shows the five-bar voice meter foundation and clearly reports that
+9. Talk shows the five-bar voice meter foundation and clearly reports that
    Gemini Live is staged for R4; it does not start an incomplete session.
-9. In Settings, switch Notification sound Off and On. A newly arriving iPhone
+10. In Settings, switch Notification sound Off and On. A newly arriving iPhone
    notification plays one short cue only when enabled; updates to the same
    notification do not replay it.
-10. Let the display dim, wake by touch, lock/unlock repeatedly, and confirm no
+11. While already on the lock face, press BOOT once. In Silent the panel enters
+    light sleep; in Stealth/Capture the panel blanks while recording continues.
+    Press BOOT once again and confirm the face wakes without immediately going
+    dark again. BOOT retains its normal Back behavior everywhere else.
+12. Let the display dim, wake by touch, lock/unlock repeatedly, and confirm no
     black/pink lines, overlapping screens, or animated full-screen transitions.
-11. Settings is grouped into Display, Connections, Alerts, and Security with
+13. Settings is grouped into Display, Connections, Alerts, and Security with
     compact controls. There is no timezone/UTC slider.
-12. Confirm no square placeholder glyphs appear in Timer, Capture, Mission,
+14. Confirm no square placeholder glyphs appear in Timer, Capture, Mission,
     notification, status, or lock-face text.
 
 ## Serial log failures to report

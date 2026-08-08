@@ -17,6 +17,7 @@ static lv_obj_t *s_mission_status;
 static lv_obj_t *s_memory_list;
 static lv_obj_t *s_memory_status;
 static lv_obj_t *s_capture_toggle_label;
+static lv_obj_t *s_capture_mode_icon;
 static int s_expanded_task_id = -1;
 
 static void render_mission(void);
@@ -221,6 +222,18 @@ static void render_memory(void)
     lv_label_set_text(s_memory_status, status);
     if (s_capture_toggle_label)
         lv_label_set_text(s_capture_toggle_label, audio_mode_button());
+    if (s_capture_mode_icon) {
+        aura_mode_t mode = aura_mode_get();
+        lv_color_t color = mode == AURA_MODE_CAPTURE ? lv_color_hex(0xE27676)
+                           : mode == AURA_MODE_STEALTH ? lv_color_hex(0xE0B36A)
+                                                      : AURA_COL_MUTED;
+        lv_obj_set_style_bg_color(s_capture_mode_icon, color, 0);
+        lv_obj_set_style_bg_opa(s_capture_mode_icon,
+                                mode == AURA_MODE_SILENT ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(s_capture_mode_icon,
+                                      mode == AURA_MODE_SILENT ? 2 : 0, 0);
+        lv_obj_set_style_border_color(s_capture_mode_icon, color, 0);
+    }
     lv_obj_clean(s_memory_list);
 
     lv_obj_t *capture_row = aura_ui_list_row(
@@ -324,6 +337,12 @@ void tile_memory_build(lv_obj_t *tile)
     /* Place the primary control above the scrollable status/proposal list. */
     lv_obj_move_to_index(button, 2);
     s_capture_toggle_label = lv_obj_get_child(button, 0);
+    s_capture_mode_icon = lv_obj_create(button);
+    lv_obj_set_size(s_capture_mode_icon, 14, 14);
+    lv_obj_set_style_radius(s_capture_mode_icon, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_pad_all(s_capture_mode_icon, 0, 0);
+    lv_obj_clear_flag(s_capture_mode_icon, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_align(s_capture_mode_icon, LV_ALIGN_LEFT_MID, 18, 0);
     lv_obj_add_event_cb(button, capture_toggle_cb, LV_EVENT_CLICKED, NULL);
     render_memory();
     (void)aura_subscribe(AURA_EVT_CAPTURE_CHANGED, capture_changed, NULL);

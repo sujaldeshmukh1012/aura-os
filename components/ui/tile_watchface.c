@@ -16,9 +16,9 @@
  * Later: next calendar event line + step count slot are already reserved.
  */
 
-static lv_obj_t *s_time, *s_date, *s_batt, *s_next, *s_wifi, *s_phone;
+static lv_obj_t *s_time, *s_time_bold, *s_date, *s_batt, *s_next, *s_wifi, *s_phone;
 static lv_obj_t *s_wifi_dot, *s_phone_dot;
-static lv_obj_t *s_notif_count, *s_unlock_hint;
+static lv_obj_t *s_notif_button, *s_notif_count, *s_unlock_hint;
 static int s_last_min = -1;
 static uint32_t s_steps;
 static void refresh_notification_preview(void);
@@ -28,8 +28,8 @@ void tile_watchface_set_visible(bool visible)
     /* Reconcile against the notification cache whenever Home becomes visible.
      * This covers removals received while the launcher or another app was up. */
     if (visible && s_notif_count) refresh_notification_preview();
-    lv_obj_t *parts[] = {s_time, s_date, s_batt, s_next, s_wifi, s_phone,
-                         s_notif_count, s_unlock_hint};
+    lv_obj_t *parts[] = {s_time, s_time_bold, s_date, s_batt, s_next, s_wifi,
+                         s_phone, s_notif_button, s_unlock_hint};
     for (size_t i = 0; i < sizeof(parts) / sizeof(parts[0]); ++i) {
         if (!parts[i]) continue;
         if (visible) lv_obj_clear_flag(parts[i], LV_OBJ_FLAG_HIDDEN);
@@ -59,14 +59,17 @@ static void refresh(void)
     static const char *wd[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
     static const char *mo[] = {"Jan","Feb","Mar","Apr","May","Jun",
                                "Jul","Aug","Sep","Oct","Nov","Dec"};
+    char time_text[16];
     if (aura_time_is_24h()) {
-        lv_label_set_text_fmt(s_time, "%d:%02d", t.tm_hour, t.tm_min);
+        lv_snprintf(time_text, sizeof(time_text), "%d:%02d", t.tm_hour, t.tm_min);
     } else {
         int hour = t.tm_hour % 12;
         if (hour == 0) hour = 12;
-        lv_label_set_text_fmt(s_time, "%d:%02d %s", hour, t.tm_min,
-                              t.tm_hour < 12 ? "AM" : "PM");
+        lv_snprintf(time_text, sizeof(time_text), "%d:%02d %s", hour, t.tm_min,
+                    t.tm_hour < 12 ? "AM" : "PM");
     }
+    lv_label_set_text(s_time, time_text);
+    lv_label_set_text(s_time_bold, time_text);
     lv_label_set_text_fmt(s_date, "%s, %s %d", wd[t.tm_wday], mo[t.tm_mon], t.tm_mday);
 }
 
@@ -154,6 +157,12 @@ static void on_notifications(void *h, esp_event_base_t b, int32_t id, void *d)
     bsp_display_unlock();
 }
 
+static void notification_button_cb(lv_event_t *event)
+{
+    (void)event;
+    aura_ui_show_notifications();
+}
+
 void tile_watchface_build(lv_obj_t *tile)
 {
     lv_obj_set_style_bg_color(tile, AURA_COL_BG, 0);
@@ -163,7 +172,15 @@ void tile_watchface_build(lv_obj_t *tile)
     lv_obj_set_style_text_font(s_time, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(s_time, lv_color_white(), 0);
     lv_obj_set_style_text_letter_space(s_time, 3, 0);
-    lv_obj_align(s_time, LV_ALIGN_CENTER, 0, -72);
+    lv_obj_align(s_time, LV_ALIGN_CENTER, -1, -72);
+
+    /* A one-pixel duplicate produces a materially heavier numeral face without
+     * shipping another large font table into flash. */
+    s_time_bold = lv_label_create(tile);
+    lv_obj_set_style_text_font(s_time_bold, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(s_time_bold, lv_color_white(), 0);
+    lv_obj_set_style_text_letter_space(s_time_bold, 3, 0);
+    lv_obj_align(s_time_bold, LV_ALIGN_CENTER, 1, -72);
 
     s_date = lv_label_create(tile);
     lv_obj_set_style_text_font(s_date, &lv_font_montserrat_16, 0);
@@ -182,15 +199,24 @@ void tile_watchface_build(lv_obj_t *tile)
     lv_obj_set_style_text_color(s_next, AURA_COL_ACCENT, 0);
     lv_obj_align(s_next, LV_ALIGN_CENTER, 0, 35);
 
-    s_notif_count = lv_label_create(tile);
+    s_notif_button = lv_button_create(tile);
+    lv_obj_set_size(s_notif_button, 230, 48);
+    lv_obj_set_style_bg_color(s_notif_button, lv_color_hex(0x101117), 0);
+    lv_obj_set_style_border_width(s_notif_button, 1, 0);
+    lv_obj_set_style_border_color(s_notif_button, lv_color_hex(0x242733), 0);
+    lv_obj_set_style_radius(s_notif_button, 16, 0);
+    lv_obj_set_style_shadow_width(s_notif_button, 0, 0);
+    lv_obj_align(s_notif_button, LV_ALIGN_CENTER, 0, 88);
+    lv_obj_add_event_cb(s_notif_button, notification_button_cb, LV_EVENT_CLICKED, NULL);
+    s_notif_count = lv_label_create(s_notif_button);
     lv_obj_set_style_text_font(s_notif_count, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(s_notif_count, AURA_COL_ACCENT, 0);
-    lv_obj_align(s_notif_count, LV_ALIGN_CENTER, 0, 88);
+    lv_obj_center(s_notif_count);
 
     s_unlock_hint = lv_label_create(tile);
     lv_obj_set_style_text_font(s_unlock_hint, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(s_unlock_hint, AURA_COL_MUTED, 0);
-    lv_label_set_text(s_unlock_hint, "Tap below to unlock");
+    lv_label_set_text(s_unlock_hint, "Tap to unlock");
     lv_obj_set_width(s_unlock_hint, 350);
     lv_obj_set_style_text_align(s_unlock_hint, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(s_unlock_hint, LV_ALIGN_BOTTOM_MID, 0, -55);

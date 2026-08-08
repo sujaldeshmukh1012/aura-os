@@ -28,6 +28,20 @@ static void dismiss_notification(lv_event_t *event)
     (void)aura_notifications_dismiss(uid);
 }
 
+static void clear_notifications(lv_event_t *event)
+{
+    lv_obj_add_state(lv_event_get_target(event), LV_STATE_DISABLED);
+    (void)aura_notifications_clear_all();
+    render_notifications();
+    lv_obj_remove_state(lv_event_get_target(event), LV_STATE_DISABLED);
+}
+
+static void notifications_home(lv_event_t *event)
+{
+    (void)event;
+    aura_ui_close_notifications();
+}
+
 static void render_notifications(void)
 {
     if (!s_notification_list) return;
@@ -93,10 +107,32 @@ void panel_notif_build(lv_obj_t *panel)
 {
     lv_obj_set_style_bg_color(panel, AURA_COL_BG, 0);
     aura_ui_apply_safe_area(panel);
+    lv_obj_set_style_pad_bottom(panel, 50, 0);
+    lv_obj_set_style_pad_row(panel, 10, 0);
     lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
-    s_notification_title = lv_label_create(panel);
+    lv_obj_t *top = lv_obj_create(panel);
+    lv_obj_set_size(top, lv_pct(100), 60);
+    lv_obj_set_style_bg_color(top, lv_color_hex(0x0D0E12), 0);
+    lv_obj_set_style_border_width(top, 0, 0);
+    lv_obj_set_style_radius(top, 16, 0);
+    lv_obj_set_style_pad_hor(top, 12, 0);
+    lv_obj_set_style_pad_ver(top, 8, 0);
+    lv_obj_set_flex_flow(top, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(top, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(top, LV_OBJ_FLAG_SCROLLABLE);
+    s_notification_title = lv_label_create(top);
     lv_label_set_text(s_notification_title, "Notifications");
-    lv_obj_set_style_text_font(s_notification_title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(s_notification_title, &lv_font_montserrat_24, 0);
+    lv_obj_t *clear = lv_button_create(top);
+    lv_obj_set_size(clear, 94, 44);
+    lv_obj_set_style_bg_color(clear, lv_color_hex(0x28202A), 0);
+    lv_obj_set_style_radius(clear, 14, 0);
+    lv_obj_t *clear_text = lv_label_create(clear);
+    lv_label_set_text(clear_text, "Clear all");
+    lv_obj_set_style_text_font(clear_text, &lv_font_montserrat_14, 0);
+    lv_obj_center(clear_text);
+    lv_obj_add_event_cb(clear, clear_notifications, LV_EVENT_CLICKED, NULL);
     s_notification_list = lv_obj_create(panel);
     lv_obj_set_width(s_notification_list, lv_pct(100));
     lv_obj_set_flex_grow(s_notification_list, 1);
@@ -106,6 +142,22 @@ void panel_notif_build(lv_obj_t *panel)
     lv_obj_set_style_pad_all(s_notification_list, 0, 0);
     lv_obj_set_style_pad_row(s_notification_list, 10, 0);
     lv_obj_set_scrollbar_mode(s_notification_list, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_t *bottom = lv_obj_create(panel);
+    lv_obj_set_size(bottom, lv_pct(100), 58);
+    lv_obj_set_style_bg_color(bottom, lv_color_hex(0x0D0E12), 0);
+    lv_obj_set_style_border_width(bottom, 0, 0);
+    lv_obj_set_style_radius(bottom, 16, 0);
+    lv_obj_set_style_pad_all(bottom, 7, 0);
+    lv_obj_clear_flag(bottom, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t *home = lv_button_create(bottom);
+    lv_obj_set_size(home, lv_pct(100), 44);
+    lv_obj_set_style_bg_color(home, lv_color_hex(0x1A1C24), 0);
+    lv_obj_set_style_radius(home, 14, 0);
+    lv_obj_t *home_text = lv_label_create(home);
+    lv_label_set_text(home_text, "Home");
+    lv_obj_set_style_text_font(home_text, &lv_font_montserrat_16, 0);
+    lv_obj_center(home_text);
+    lv_obj_add_event_cb(home, notifications_home, LV_EVENT_CLICKED, NULL);
     render_notifications();
     (void)aura_subscribe(AURA_EVT_NOTIFICATIONS_CHANGED, notifications_changed, NULL);
 }
