@@ -1,0 +1,14 @@
+{
+  "protocol_version": "1.0",
+  "message_id": "4bb08313-c860-4c52-aa52-9b7f3860cb8c",
+  "correlation_id": null,
+  "timestamp": "2026-11-24T18:00:00Z",
+  "source": { "kind": "simulator", "id": "simulator-dev" },
+  "destination": { "kind": "host", "id": "local" },
+  "message_type": "session.hello",
+  "payload": {
+    "supported_versions": ["1.0"],
+    "capabilities": ["display.480x320", "touch", "simulator"]
+  },
+  "auth": { "mode": "development", "session_id": null, "sequence": 0 }
+}

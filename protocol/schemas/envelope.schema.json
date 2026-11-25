@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.local/schemas/envelope-1.0.json",
+  "title": "NEXUS protocol envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "message_id",
+    "correlation_id",
+    "timestamp",
+    "source",
+    "destination",
+    "message_type",
+    "payload",
+    "auth"
+  ],
+  "properties": {
+    "protocol_version": { "const": "1.0" },
+    "message_id": { "type": "string", "format": "uuid" },
+    "correlation_id": {
+      "oneOf": [
+        { "type": "string", "format": "uuid" },
+        { "type": "null" }
+      ]
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "source": { "$ref": "#/$defs/endpoint" },
+    "destination": { "$ref": "#/$defs/endpoint" },
+    "message_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "maxLength": 96
+    },
+    "payload": { "type": "object" },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "session_id", "sequence"],
+      "properties": {
+        "mode": { "enum": ["development", "paired"] },
+        "session_id": { "type": ["string", "null"], "maxLength": 128 },
+        "sequence": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {
+          "enum": ["device", "host", "backend", "simulator", "dashboard", "broadcast"]
+        },
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    }
+  }
+}

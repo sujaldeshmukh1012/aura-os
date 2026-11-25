@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>NEXUS Device Simulator</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="device" aria-label="NEXUS 480 by 320 device simulator">
+      <header>
+        <div class="brand"><span class="brand-mark"></span><span id="brand">NEXUS</span></div>
+        <div class="clock"><strong id="time">--:--</strong><span id="date">---</span></div>
+        <div id="connection" class="connection offline"><span></span>OFFLINE</div>
+      </header>
+
+      <section class="workspace panel">
+        <div class="eyebrow">ACTIVE PROJECT</div>
+        <h1 id="project">Foundation</h1>
+        <div id="mode" class="mode">BUILD</div>
+        <div class="rule"></div>
+        <div class="eyebrow">NEXT COMMITMENT</div>
+        <p id="commitment">No calendar provider configured</p>
+      </section>
+
+      <section class="priorities panel">
+        <div class="section-title"><span>PRIORITY QUEUE</span><b id="task-count">0</b></div>
+        <ol id="tasks"></ol>
+        <div class="footer-line">
+          <span><b id="attention">0</b> ATTENTION</span>
+          <span><b id="agents">0</b> AGENTS</span>
+          <span><b id="approvals">0</b> APPROVALS</span>
+        </div>
+      </section>
+
+      <section class="telemetry panel">
+        <div class="section-title"><span>HOST SYSTEM</span><small id="host">LOCAL</small></div>
+        <div class="metric"><label>CPU</label><div><i id="cpu-bar"></i></div><b id="cpu">--</b></div>
+        <div class="metric"><label>MEM</label><div><i id="memory-bar"></i></div><b id="memory">--</b></div>
+        <div class="metric"><label>DISK</label><div><i id="disk-bar"></i></div><b id="disk">--</b></div>
+        <div class="battery-row"><span>BATTERY</span><b id="battery">--</b></div>
+        <div class="repo"><span id="branch">NO REPO</span><b id="dirty">—</b></div>
+      </section>
+
+      <footer><span>HOME</span><span>ATTENTION</span><span>WORKSPACES</span><span>ASSISTANT</span></footer>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "home": {
+    "active_project": "Lunabotics",
+    "work_mode": "Deep Work",
+    "next_commitment": "Controls review · 14:30",
+    "priority_tasks": [
+      "Review drivetrain pull request",
+      "Resolve CI failure on firmware build",
+      "Prepare controls review notes"
+    ],
+    "attention_count": 3,
+    "agents": [{"name": "Build diagnostic", "status": "running"}],
+    "pending_approvals": 1
+  },
+  "telemetry": {
+    "cpu_percent": 37,
+    "memory_percent": 64,
+    "disk_percent": 42,
+    "battery_percent": 78,
+    "battery_charging": true,
+    "hostname": "NEXUS-MOCK",
+    "repository": {"available": true, "branch": "feature/control-loop", "dirty": true}
+  }
+}

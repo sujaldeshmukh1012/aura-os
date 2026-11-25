@@ -1,0 +1,19 @@
+{
+  "protocol_version": "1.0",
+  "message_id": "9c665a7d-cb8b-4748-b652-b3a88e4d417d",
+  "correlation_id": null,
+  "timestamp": "2026-11-24T18:00:01Z",
+  "source": { "kind": "host", "id": "local" },
+  "destination": { "kind": "simulator", "id": "simulator-dev" },
+  "message_type": "telemetry.snapshot",
+  "payload": {
+    "cpu_percent": 24.0,
+    "memory_percent": 61.2,
+    "disk_percent": 38.4,
+    "battery_percent": 82,
+    "battery_charging": true,
+    "repository": { "branch": "main", "dirty": false },
+    "freshness": "fresh"
+  },
+  "auth": { "mode": "development", "session_id": "dev-session", "sequence": 2 }
+}

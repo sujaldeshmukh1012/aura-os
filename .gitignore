@@ -1,9 +1,22 @@
-# ESP-IDF build output
+# Build and dependency output
 build/
 sdkconfig
 sdkconfig.old
-dependencies.lock
 managed_components/
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/dependencies.lock
+firmware/managed_components/
+.build/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
 
 # Editors and operating systems
 .DS_Store
@@ -11,12 +24,13 @@ managed_components/
 .idea/
 *.swp
 
-# Local credentials and environment files
+# Local credentials and runtime data
 .env
+.env.*
+!.env.example
 *.key
 *.key.pub
 *.pem
-__pycache__/
-*.egg-info/
-server/data/
-
+secrets/
+data/
+server/
