@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Rotated the ST7796S and FT6336U mappings together by 180 degrees for the board's upright landscape orientation.
+
 ## Unreleased
 
 - Reframed Aura OS v2 as the NEXUS Personal Intelligence Dock.

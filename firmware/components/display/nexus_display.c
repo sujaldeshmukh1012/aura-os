@@ -29,7 +29,7 @@ static uint16_t *s_dma_buffer;
 static bool s_ready;
 
 /* LCDWiki's ES3C40P ST7796S sequence, with the required sleep-out delay and
- * landscape MADCTL (MX + MV + BGR) made explicit. */
+ * landscape MADCTL (MY + MV + BGR) made explicit. */
 static const lcd_init_command_t INIT_COMMANDS[] = {
     {0xF0, {0xC3}, 1, 0},
     {0xF0, {0x96}, 1, 0},
@@ -54,7 +54,7 @@ static const lcd_init_command_t INIT_COMMANDS[] = {
     {0xF0, {0x69}, 1, 0},
     {0x13, {0}, 0, 0},
     {0x11, {0}, 0, 120},
-    {0x36, {0x68}, 1, 0},
+    {0x36, {0xA8}, 1, 0},
     {0x29, {0}, 0, 20},
 };
 

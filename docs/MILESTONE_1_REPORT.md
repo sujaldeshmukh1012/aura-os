@@ -5,7 +5,7 @@ Date: 2026-11-24
 ## Implemented
 
 - Native ST7796S 4-wire SPI driver at 40 MHz on the documented ES3C40P pins.
-- LCDWiki's current ST7796S initialization table, RGB565 format, inversion mode, and landscape MADCTL `0x68`.
+- LCDWiki's current ST7796S initialization table, RGB565 format, inversion mode, and upright-landscape MADCTL `0xA8`.
 - Active-high GPIO45 backlight sequencing after a black framebuffer clear.
 - LVGL 8.4.0 partial-render pipeline using a PSRAM draw buffer and internal DMA staging buffer.
 - 480×320 NEXUS diagnostic interface with display, touch, and USB status cards.
@@ -37,5 +37,5 @@ Date: 2026-11-24
 ## Remaining physical signoff
 
 - Visually confirm RGB color order and that the NEXUS header reads left-to-right in 480×320 landscape.
-- Tap all four corners and the center to verify the selected clockwise touch transform.
+- Tap all four corners and the center to verify the selected counter-clockwise touch transform.
 - Photograph the board labels and record the PCB revision.

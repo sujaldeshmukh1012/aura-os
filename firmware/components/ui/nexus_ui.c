@@ -124,7 +124,7 @@ static void build_screen(lv_indev_t *touch_input)
 
     s_touch_label = make_label(screen, "TOUCH READY  /  WAITING FOR INPUT",
                                lv_color_hex(0x8290A6), 20, 262);
-    make_label(screen, "BUILD 0.2.0", lv_color_hex(0x46536A), 372, 262);
+    make_label(screen, "BUILD 0.2.1", lv_color_hex(0x46536A), 372, 262);
 
     lv_obj_t *cursor = lv_obj_create(screen);
     lv_obj_set_size(cursor, 18, 18);

@@ -134,7 +134,7 @@ static void status_task(void *context)
 void app_main(void)
 {
     const nexus_board_capabilities_t *board = nexus_board_capabilities();
-    ESP_LOGI(TAG, "NEXUS %s starting on %s", "0.2.0", board->sku);
+    ESP_LOGI(TAG, "NEXUS %s starting on %s", "0.2.1", board->sku);
 
     ESP_ERROR_CHECK(nexus_transport_init(on_host_message, NULL));
 
