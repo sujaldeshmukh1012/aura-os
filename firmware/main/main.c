@@ -11,7 +11,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nexus_board.h"
+#include "nexus_display.h"
+#include "nexus_touch.h"
 #include "nexus_transport.h"
+#include "nexus_ui.h"
 
 static const char *TAG = "nexus";
 static uint32_t s_sequence;
@@ -105,12 +108,21 @@ static void status_task(void *context)
     (void)context;
     char payload[512];
     for (;;) {
+        nexus_touch_state_t touch = {0};
+        nexus_touch_get_state(&touch);
         int64_t uptime_ms = esp_timer_get_time() / 1000;
         snprintf(payload, sizeof(payload),
                  "{\"board\":\"%s\",\"clock_synchronized\":false,"
-                 "\"free_heap_bytes\":%" PRIu32 ",\"uptime_ms\":%" PRId64 "}",
+                 "\"display_ready\":%s,\"free_heap_bytes\":%" PRIu32 ","
+                 "\"touch_chip_id\":%u,\"touch_events\":%" PRIu32 ","
+                 "\"touch_pressed\":%s,\"touch_ready\":%s,"
+                 "\"touch_x\":%u,\"touch_y\":%u,\"ui_ready\":%s,"
+                 "\"uptime_ms\":%" PRId64 "}",
                  nexus_board_capabilities()->sku,
-                 esp_get_free_heap_size(), uptime_ms);
+                 nexus_display_is_ready() ? "true" : "false",
+                 esp_get_free_heap_size(), touch.chip_id, touch.touch_events,
+                 touch.pressed ? "true" : "false", touch.ready ? "true" : "false",
+                 touch.x, touch.y, nexus_ui_is_ready() ? "true" : "false", uptime_ms);
         esp_err_t err = send_message("device.status", payload, NULL);
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "status send failed: %s", esp_err_to_name(err));
@@ -122,13 +134,28 @@ static void status_task(void *context)
 void app_main(void)
 {
     const nexus_board_capabilities_t *board = nexus_board_capabilities();
-    ESP_LOGI(TAG, "NEXUS %s starting on %s", "0.1.0", board->sku);
+    ESP_LOGI(TAG, "NEXUS %s starting on %s", "0.2.0", board->sku);
 
     ESP_ERROR_CHECK(nexus_transport_init(on_host_message, NULL));
+
+    esp_err_t display_error = nexus_display_init();
+    if (display_error != ESP_OK) {
+        ESP_LOGE(TAG, "display initialization failed: %s", esp_err_to_name(display_error));
+    }
+    esp_err_t touch_error = nexus_touch_init();
+    if (touch_error != ESP_OK) {
+        ESP_LOGE(TAG, "touch initialization failed: %s", esp_err_to_name(touch_error));
+    }
+    esp_err_t ui_error = nexus_ui_start();
+    if (ui_error != ESP_OK) {
+        ESP_LOGE(TAG, "UI startup failed: %s", esp_err_to_name(ui_error));
+    }
+
     esp_err_t hello_err = send_message(
         "session.hello",
         "{\"capabilities\":[\"display.480x320\",\"touch.ft6336u\","
-        "\"transport.usb_serial_jtag\"],\"supported_versions\":[\"1.0\"]}",
+        "\"transport.usb_serial_jtag\",\"ui.lvgl.8.4\"],"
+        "\"supported_versions\":[\"1.0\"]}",
         NULL);
     if (hello_err != ESP_OK) {
         ESP_LOGW(TAG, "initial host hello deferred: %s", esp_err_to_name(hello_err));

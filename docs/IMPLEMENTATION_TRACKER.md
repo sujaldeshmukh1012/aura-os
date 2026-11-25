@@ -10,8 +10,8 @@ Updated: 2026-11-24
 | Device simulator | P0 | Implemented | Host service | `simulator/` | Unit + E2E | Browser rendering is simulator-only; must represent 480×320 and reconnect after host restart. |
 | ES3C40P BSP record | P0 | Implemented | Manufacturer docs | `firmware/components/board`, `docs/HARDWARE.md` | Build | Physical PCB revision unverified; acceptance requires checklist completion on owned board. |
 | Native USB framed transport | P0 | Hardware-validated | ESP-IDF, board USB path | `firmware/components/transport` | Firmware build + physical E2E | Physical Type-C welcome/ping/pong and consecutive status frames passed without resets; production macOS serial adapter remains. |
-| ST7796S display + LVGL | P0 | Blocked on hardware verification | Board revision/demo init | `firmware/components/display`, `ui` | None | Must render correct 480×320 landscape colors on physical board. |
-| FT6336U touch | P0 | Blocked on hardware verification | I²C/display rotation | `firmware/components/touch` | None | Must pass edge/corner transform test in landscape. |
+| ST7796S display + LVGL | P0 | Hardware-active | Visual signoff | `firmware/components/display`, `ui` | Firmware build + physical runtime | Vendor sequence, 40 MHz SPI, backlight, and LVGL UI are active; visually confirm RGB order and 480×320 rotation. |
+| FT6336U touch | P0 | Hardware-validated | Final transform calibration | `firmware/components/touch` | Firmware build + physical runtime | Chip ID `0x64` and live press coordinates passed; edge/corner transform accuracy still needs signoff. |
 | macOS menu-bar shell | P1 | Scaffolded | AppKit | `host/macos` | Build | Not signed/packaged; must show live service/device status and permission diagnostics. |
 | Secure pairing | P1 | Designed | Keychain, NVS, crypto review | `docs/SECURITY.md` | None | Development auth is not acceptable for LAN/production. |
 | Workspace manager | P1 | Planned | Persistence, action broker | `host/` | None | Activation must be inspectable and never close processes unless configured. |
@@ -21,7 +21,7 @@ Updated: 2026-11-24
 
 ## Immediate next actions
 
-1. Obtain front/back board photographs and record the physical PCB revision.
-2. Import and audit the manufacturer's ESP-IDF ST7796S/FT6336U initialization sequence.
+1. Visually confirm display RGB order/orientation and tap all four corners to sign off the touch transform.
+2. Obtain front/back board photographs and record the physical PCB revision.
 3. Implement the macOS serial transport against the hardware-validated USB framing.
 4. Share a single UI state model between LVGL and simulator fixtures.

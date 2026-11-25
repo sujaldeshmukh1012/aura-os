@@ -4,7 +4,7 @@
 
 - Python 3.11 or newer.
 - Xcode/Swift for the menu-bar shell.
-- ESP-IDF 6.x with the ESP32-S3 toolchain for firmware.
+- ESP-IDF 6.x with the ESP32-S3 toolchain for firmware. The first build resolves the pinned `lvgl/lvgl` 8.4.0 component from the Espressif registry.
 
 No Python packages are required for the Phase 0 vertical slice.
 
@@ -25,7 +25,7 @@ cd firmware
 idf.py -p /dev/cu.usbmodemXXXX flash
 ```
 
-Do not flash until the connected serial port and owned board have been identified. The current firmware validates board capabilities and native USB framing; display/touch code remains gated by the hardware checklist.
+Do not flash until the connected serial port and owned board have been identified. Firmware 0.2.0 initializes ST7796S/LVGL and FT6336U after the native USB transport; failed optional hardware initialization is reported without disabling USB diagnostics.
 
 ## Tests
 

@@ -10,6 +10,8 @@
 - ESP-IDF compile/link for ESP32-S3.
 - Physical ESP32-S3 flash with hash verification.
 - Bidirectional USB welcome/ping/pong and consecutive status-frame validation.
+- ST7796S initialization at 40 MHz SPI with LVGL UI task ready.
+- FT6336U I²C identity (`0x64`) and live press-coordinate validation.
 - Swift menu-bar shell build.
 
 ## Validation labels
@@ -19,4 +21,4 @@
 - **build-verified** — target compiles/links only.
 - **hardware-validated** — executed on the documented physical revision with evidence.
 
-Phase 0 flashing and native USB runtime behavior are hardware-validated. Display, touch, audio, storage, and auxiliary I/O are not.
+Flashing, native USB, and FT6336U input delivery are hardware-validated. The ST7796S/LVGL runtime is active, but visual color/orientation signoff is still required. Audio, storage, and auxiliary I/O are not validated.

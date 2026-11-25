@@ -6,17 +6,19 @@ This branch contains the clean-sheet v2 implementation. Aura OS v1 remains avail
 
 ## Current milestone
 
-The Phase 0 vertical slice includes:
+The Phase 0 foundation and Phase 1 hardware bring-up include:
 
 - A versioned, transport-neutral framed JSON protocol.
 - A real macOS telemetry service using only the Python standard library.
 - A 480×320 landscape browser simulator using the same protocol as firmware.
 - An ESP-IDF firmware target with an ES3C40P board support package and native USB transport.
+- A native ST7796S 480×320 landscape driver and LVGL 8.4 NEXUS diagnostic UI.
+- An FT6336U driver with on-screen pointer input and live hardware status.
 - A native macOS menu-bar launcher scaffold.
 - Protocol, service, simulator, and firmware build tests.
 - Architecture, hardware, security, roadmap, and implementation tracking documents.
 
-Display and touch initialization are deliberately gated until the physical PCB revision and the manufacturer's ESP-IDF initialization sequence are checked against the owned board. Simulator-tested features are not labeled as hardware-validated.
+The owned board now boots the physical display/touch stack and reports the FT6336U as chip ID `0x64`. Visual color/rotation signoff and an edge/corner touch-transform test remain explicit hardware acceptance steps.
 
 ## Run the vertical slice
 

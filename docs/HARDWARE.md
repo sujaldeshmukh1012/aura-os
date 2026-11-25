@@ -1,6 +1,6 @@
 # Hardware record: LCDWiki ES3C40P
 
-Status: **MCU, memory, flashing, and native USB hardware-validated; PCB revision, display, and touch unverified**.
+Status: **MCU, memory, flashing, native USB, and FT6336U input hardware-validated; display visual signoff and PCB revision remain open**.
 
 Sources:
 
@@ -37,9 +37,11 @@ On 2026-11-24, `esptool` and the running NEXUS firmware confirmed:
 | Flash | 16 MB quad, 3.3 V |
 | PSRAM | 8 MB embedded PSRAM |
 | USB | Native USB Serial/JTAG; flash hashes verified and bidirectional NEXUS frames exchanged |
-| Runtime | Stable status frames at five-second intervals with no reset marker during validation |
+| Display runtime | ST7796S vendor sequence completed at 40 MHz SPI; LVGL 8.4 UI reports ready |
+| Touch runtime | FT6336U responded at `0x38` with chip ID `0x64`; live press coordinates and events observed |
+| Runtime | Stable status frames at five-second intervals with no reset marker during display/touch validation |
 
-The board's printed PCB revision has not yet been recorded, so display, touch, audio, storage, and auxiliary GPIO claims remain documentation-only.
+The board's printed PCB revision and the display's visual color/rotation result have not yet been recorded. Audio, storage, and auxiliary GPIO claims remain documentation-only.
 
 ## Pin allocation
 
@@ -68,8 +70,10 @@ The board's printed PCB revision has not yet been recorded, so display, touch, a
 - Photograph front/back labels and record PCB revision.
 - [x] Confirm ESP32-S3 identity and flash/PSRAM through `esptool` and boot logs.
 - Compare board continuity/layout with the published schematic.
-- Run manufacturer display initialization and verify color order, rotation, backlight polarity, and maximum SPI clock.
-- Verify FT6336U coordinates and interrupt/reset polarity in all rotations.
+- [x] Run the manufacturer ST7796S initialization, enable the active-high backlight, and sustain 40 MHz SPI transfers.
+- Visually confirm RGB color order and the 480×320 landscape orientation.
+- [x] Confirm FT6336U identity at `0x38`, reset behavior, and live coordinate delivery.
+- Verify FT6336U edge/corner transform accuracy in landscape.
 - Confirm audio codec identity and I²C address from the physical board.
 - [x] Verify the Type-C connector exposes native USB data and stable reconnect behavior.
 - Inventory connector pitch, voltage levels, and current budget before expansion wiring.

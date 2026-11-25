@@ -1,15 +1,15 @@
 # Roadmap
 
-## Phase 0 — foundation (active)
+## Phase 0 — foundation (complete)
 
 - Repository architecture, board record, protocol, simulator, tests.
 - Real host telemetry vertical slice.
 - Native USB transport build and physical bidirectional validation.
-- Physical board revision and display/touch validation remain open.
+- Physical USB protocol validation complete.
 
-## Phase 1 — functional dock
+## Phase 1 — functional dock (active)
 
-- ST7796S + FT6336U LVGL board bring-up.
+- ST7796S + FT6336U LVGL board bring-up implemented; visual/corner calibration signoff remains.
 - USB host serial adapter and secure pairing.
 - Device state cache, reconnection, diagnostics, and settings.
 - macOS permission onboarding and signed background service.
