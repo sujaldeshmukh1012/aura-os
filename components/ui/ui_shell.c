@@ -678,6 +678,10 @@ static void on_btn_back(void *h, esp_event_base_t b, int32_t id, void *d)
 static void on_btn_home(void *h, esp_event_base_t b, int32_t id, void *d)
 {
     (void)h; (void)b; (void)id; (void)d;
+    if (s_state == UI_LOCKED) {
+        power_mgr_lock_screen_off();
+        return;
+    }
     bsp_display_lock(0);
     show_lock();
     bsp_display_unlock();

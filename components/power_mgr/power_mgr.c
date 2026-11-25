@@ -89,14 +89,32 @@ static void boot_btn_task(void *arg)
             continue;
         }
         if (gpio_get_level(AURA_BTN_BOOT) == 0) {           /* pressed (active low) */
+            /* The button can become low while the power task still owns the
+             * light-sleep wake transition.  Re-check here (not only at the
+             * top of the loop) so that the wake press can never be posted as
+             * a second Back/Home event after display_on(). */
+            if (s_button_woke_sleep || s_state == PWR_ASLEEP) {
+                while (gpio_get_level(AURA_BTN_BOOT) == 0)
+                    vTaskDelay(pdMS_TO_TICKS(20));
+                s_button_woke_sleep = false;
+                vTaskDelay(pdMS_TO_TICKS(80));
+                continue;
+            }
             int64_t t0 = esp_timer_get_time();
             while (gpio_get_level(AURA_BTN_BOOT) == 0) {
                 vTaskDelay(pdMS_TO_TICKS(20));
                 if (esp_timer_get_time() - t0 > 700 * 1000) break;
             }
-            bool long_press = (esp_timer_get_time() - t0) > 700 * 1000;
+            int64_t press_us = esp_timer_get_time() - t0;
+            if (press_us < 60 * 1000) {
+                ESP_LOGD(TAG, "ignored BOOT glitch (%lld us)", press_us);
+                continue;
+            }
+            bool long_press = press_us > 700 * 1000;
             bool was_blanked = s_state == PWR_BLANKED;
             power_mgr_kick();
+            ESP_LOGI(TAG, "BOOT %s press (blanked=%d)",
+                     long_press ? "long" : "short", was_blanked);
             if (s_state == PWR_ASLEEP) {
                 /* button also wakes: handled by wake path, don't double-post */
             } else if (!was_blanked) {
@@ -226,13 +244,15 @@ void power_mgr_lock_screen_off(void)
 {
     portENTER_CRITICAL(&s_lock);
     bool capture_active = (s_wake_locks & POWER_WAKE_LOCK_CAPTURE) != 0;
-    if (capture_active) {
-        s_state = PWR_BLANKED;
-    } else {
-        s_sleep_requested = true;
-    }
+    /* Manual screen-off is AMOLED-only blanking in every mode.  Full light
+     * sleep suspends the BLE controller on this board, which made Aura
+     * unavailable to the phone whenever the display was off.  PWR_BLANKED
+     * preserves the low-cost black panel while BLE (and capture, if active)
+     * remains serviced; the next BOOT press is consumed purely as Wake. */
+    s_state = PWR_BLANKED;
     portEXIT_CRITICAL(&s_lock);
-    if (capture_active) bsp_display_brightness_set(0);
+    bsp_display_brightness_set(0);
+    ESP_LOGI(TAG, "lock face manually blanked (capture=%d)", capture_active);
 }
 
 void power_mgr_set_screen_saver_active(bool active)

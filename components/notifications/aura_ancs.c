@@ -23,10 +23,13 @@
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "host/ble_hs.h"
+#include "host/ble_store.h"
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
+#include "services/gatt/ble_svc_gatt.h"
 #include "nimble/ble.h"
 #include "ble_ancs.h"
+#include "aura_core.h"
 #include "aura_notifications.h"
 #include "esp_timer.h"
 
@@ -35,6 +38,90 @@ uint16_t data_source_handle;
 uint16_t control_point_handle;
 uint16_t svc_e_handle;
 static uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+
+#if !CONFIG_EXAMPLE_EXTENDED_ADV
+static esp_timer_handle_t s_adv_retry_timer;
+static void ble_ancs_advertise(void);
+
+static void adv_retry_callback(void *arg)
+{
+    (void)arg;
+    ble_ancs_advertise();
+}
+
+static void schedule_adv_retry(void)
+{
+    if (s_adv_retry_timer && !esp_timer_is_active(s_adv_retry_timer)) {
+        esp_err_t err = esp_timer_start_once(s_adv_retry_timer, 250000);
+        if (err != ESP_OK)
+            ESP_LOGW("NimBLE_ANCS", "advertising retry timer: %s",
+                     esp_err_to_name(err));
+    }
+}
+#endif
+
+/* A very small local service used only to bootstrap iOS pairing.  Generic
+ * CoreBluetooth browsers such as LightBlue do not request ANCS authorization
+ * just by connecting.  Reading this encrypted characteristic makes iOS start
+ * its native pairing flow; once ENC_CHANGE succeeds, Aura discovers ANCS on
+ * the phone as before. */
+static const ble_uuid128_t AURA_PAIR_SVC_UUID = BLE_UUID128_INIT(
+    0x9f, 0x5f, 0xa2, 0x30, 0x4d, 0x62, 0xb8, 0x91,
+    0x31, 0x4a, 0x72, 0xae, 0x01, 0xa0, 0x7a, 0x8d);
+static const ble_uuid128_t AURA_PAIR_CHR_UUID = BLE_UUID128_INIT(
+    0xa0, 0x8e, 0xc3, 0x41, 0x5e, 0x73, 0xc9, 0xa2,
+    0x42, 0x5b, 0x83, 0xbf, 0x02, 0xb1, 0x8b, 0x9e);
+static const ble_uuid16_t AURA_PAIR_NAME_UUID =
+    BLE_UUID16_INIT(0x2901); /* Characteristic User Description */
+static uint16_t s_pair_value_handle;
+
+static int aura_pair_access(uint16_t conn_handle, uint16_t attr_handle,
+                            struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    static const char paired_value[] = "Aura Watch";
+    static const char pair_name[] = "Pair Aura";
+    const void *value;
+    size_t value_len;
+
+    if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR &&
+        attr_handle == s_pair_value_handle) {
+        value = paired_value;
+        value_len = sizeof(paired_value) - 1;
+    } else if (ctxt->op == BLE_GATT_ACCESS_OP_READ_DSC &&
+               ble_uuid_cmp(ctxt->dsc->uuid, &AURA_PAIR_NAME_UUID.u) == 0) {
+        value = pair_name;
+        value_len = sizeof(pair_name) - 1;
+    } else {
+        return BLE_ATT_ERR_UNLIKELY;
+    }
+    int rc = os_mbuf_append(ctxt->om, value, value_len);
+    return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+}
+
+static const struct ble_gatt_svc_def s_pair_services[] = {
+    {
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = &AURA_PAIR_SVC_UUID.u,
+        .characteristics = (struct ble_gatt_chr_def[]) {
+            {
+                .uuid = &AURA_PAIR_CHR_UUID.u,
+                .access_cb = aura_pair_access,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_READ_ENC,
+                .val_handle = &s_pair_value_handle,
+                .descriptors = (struct ble_gatt_dsc_def[]) {
+                    {
+                        .uuid = &AURA_PAIR_NAME_UUID.u,
+                        .att_flags = BLE_ATT_F_READ,
+                        .access_cb = aura_pair_access,
+                    },
+                    {0},
+                },
+            },
+            {0},
+        },
+    },
+    {0},
+};
 
 bool aura_ancs_is_connected(void)
 {
@@ -455,6 +542,7 @@ ble_ancs_advertise(void)
     rc = ble_gap_adv_set_fields(&fields);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "error setting advertisement data; rc=%d\n", rc);
+        schedule_adv_retry();
         return;
     }
 
@@ -465,9 +553,13 @@ ble_ancs_advertise(void)
     response.name = (uint8_t *)name;
     response.name_len = strlen(name);
     response.name_is_complete = 1;
+    response.uuids128 = &AURA_PAIR_SVC_UUID;
+    response.num_uuids128 = 1;
+    response.uuids128_is_complete = 1;
     rc = ble_gap_adv_rsp_set_fields(&response);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "error setting scan response; rc=%d\n", rc);
+        schedule_adv_retry();
         return;
     }
 
@@ -478,7 +570,11 @@ ble_ancs_advertise(void)
     rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER,
                            &adv_params, ble_ancs_gap_event, NULL);
     if (rc != 0) {
-        MODLOG_DFLT(ERROR, "error enabling advertisement; rc=%d\n", rc);
+        if (rc == BLE_HS_EBUSY || rc == BLE_HS_EALREADY)
+            MODLOG_DFLT(INFO, "advertising restart deferred; rc=%d\n", rc);
+        else
+            MODLOG_DFLT(ERROR, "error enabling advertisement; rc=%d\n", rc);
+        schedule_adv_retry();
         return;
     }
     ESP_LOGI(tag, "advertising as Aura Watch with ANCS solicitation");
@@ -535,21 +631,12 @@ ble_ancs_gap_event(struct ble_gap_event *event, void *arg)
             return 0;
         }
 
-        /** Initiate security - It will perform
-         * Pairing (Exchange keys)
-         * Bonding (Store keys)
-         * Encryption (Enable encryption)
-         * Will invoke event BLE_GAP_EVENT_ENC_CHANGE
-         **/
-        rc = ble_gap_security_initiate(event->connect.conn_handle);
-        if (rc != 0) {
-            MODLOG_DFLT(INFO, "Security could not be initiated, rc = %d\n", rc);
-            return ble_gap_terminate(event->connect.conn_handle,
-                                    BLE_ERR_REM_USER_CONN_TERM);
-        } else {
-            MODLOG_DFLT(INFO, "Connection secured\n");
-        }
-    return 0;
+        /* Do not send an unsolicited Security Request here. Modern iOS drops
+         * generic CoreBluetooth connections which did not opt into ANCS before
+         * that request completes. LightBlue should instead read Aura's secured
+         * pairing characteristic, which lets iOS initiate pairing normally. */
+        ESP_LOGI(tag, "BLE link ready; read 'Pair Aura' in LightBlue to pair");
+        return 0;
 
     case BLE_GAP_EVENT_DISCONNECT:
         s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
@@ -597,6 +684,10 @@ ble_ancs_gap_event(struct ble_gap_event *event, void *arg)
         if (event->enc_change.status != 0) {
             ESP_LOGW(tag, "pairing/encryption failed: status=%d",
                      event->enc_change.status);
+            /* ENOTCONN means the peer already abandoned the procedure.  A
+             * second local terminate only creates a stale disconnect event
+             * and races the advertising restart. */
+            if (event->enc_change.status == BLE_HS_ENOTCONN) return 0;
             return ble_gap_terminate(event->enc_change.conn_handle,
                                      BLE_ERR_REM_USER_CONN_TERM);
         }
@@ -739,16 +830,41 @@ ble_ancs_on_reset(int reason)
 static void
 ble_ancs_on_sync(void)
 {
+    uint8_t identity[6];
+    size_t identity_len = sizeof(identity);
+    bool generated = false;
+    ble_addr_t random_addr;
     int rc;
 
-    rc = ble_hs_util_ensure_addr(0);
-    assert(rc == 0);
-
-    /* Figure out address to use while advertising (no privacy for now) */
-    rc = ble_hs_id_infer_auto(0, &own_addr_type);
+    /* Use a stable random-static identity rather than the controller's public
+     * address. Earlier failed pairing attempts left iOS holding keys for the
+     * public identity; it then tried stale encryption and terminated before a
+     * fresh connection completed. This NVS-backed identity is new once and is
+     * stable across ordinary firmware updates and reboots. */
+    if (aura_settings_get_blob("ble_identity", identity, &identity_len) != ESP_OK ||
+        identity_len != sizeof(identity) || (identity[5] & 0xc0) != 0xc0) {
+        rc = ble_hs_id_gen_rnd(0, &random_addr); /* static random */
+        if (rc != 0) {
+            ESP_LOGE(tag, "could not generate BLE identity: rc=%d", rc);
+            return;
+        }
+        memcpy(identity, random_addr.val, sizeof(identity));
+        if (aura_settings_set_blob("ble_identity", identity, sizeof(identity)) != ESP_OK) {
+            ESP_LOGE(tag, "could not persist BLE identity");
+            return;
+        }
+        generated = true;
+    }
+    rc = ble_hs_id_set_rnd(identity);
     if (rc != 0) {
-        MODLOG_DFLT(ERROR, "error determining address type; rc=%d\n", rc);
+        ESP_LOGE(tag, "could not install BLE identity: rc=%d", rc);
         return;
+    }
+    own_addr_type = BLE_OWN_ADDR_RANDOM;
+    if (generated) {
+        rc = ble_store_clear();
+        if (rc != 0) ESP_LOGW(tag, "could not clear legacy BLE bonds: rc=%d", rc);
+        ESP_LOGI(tag, "created fresh persistent BLE identity");
     }
 
     /* Printing ADDR */
@@ -801,6 +917,12 @@ aura_ancs_init(void)
     ble_hs_cfg.sm_our_key_dist = BLE_SM_PAIR_KEY_DIST_ENC;
     ble_hs_cfg.sm_their_key_dist = BLE_SM_PAIR_KEY_DIST_ENC;
 
+    ble_svc_gatt_init();
+    rc = ble_gatts_count_cfg(s_pair_services);
+    assert(rc == 0);
+    rc = ble_gatts_add_svcs(s_pair_services);
+    assert(rc == 0);
+
     /* Set the default device name. */
     rc = ble_svc_gap_device_name_set("Aura Watch");
     assert(rc == 0);
@@ -809,6 +931,13 @@ aura_ancs_init(void)
     ble_store_config_init();
 
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+#if !CONFIG_EXAMPLE_EXTENDED_ADV
+    const esp_timer_create_args_t adv_retry_args = {
+        .callback = adv_retry_callback,
+        .name = "ancs_adv_retry",
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&adv_retry_args, &s_adv_retry_timer));
+#endif
 
     nimble_port_freertos_init(ble_ancs_host_task);
 
