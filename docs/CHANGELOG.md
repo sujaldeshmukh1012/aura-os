@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Replaced the bottom-up ST7796 orientation with standard landscape mode and aligned the FT6336 transform to remove mirroring.
+
 ## 0.2.1
 
 - Rotated the ST7796S and FT6336U mappings together by 180 degrees for the board's upright landscape orientation.

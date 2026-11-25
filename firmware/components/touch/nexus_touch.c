@@ -52,11 +52,10 @@ static void touch_task(void *context)
             raw_x = (uint16_t)(((data[1] & 0x0F) << 8) | data[2]);
             raw_y = (uint16_t)(((data[3] & 0x0F) << 8) | data[4]);
 
-            /* The digitizer is portrait-native. MADCTL 0xA8 selects the
-             * board's upright landscape orientation, so touch follows the
-             * same counter-clockwise transform. */
-            x = (uint16_t)(479 - clamp_u16(raw_y, 479));
-            y = clamp_u16(raw_x, 319);
+            /* The digitizer is portrait-native. MADCTL 0x28 is the standard
+             * landscape rotation, so swap axes and mirror logical Y. */
+            x = clamp_u16(raw_y, 479);
+            y = (uint16_t)(319 - clamp_u16(raw_x, 319));
         }
 
         taskENTER_CRITICAL(&s_state_lock);
